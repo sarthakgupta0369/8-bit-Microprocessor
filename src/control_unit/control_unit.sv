@@ -10,7 +10,7 @@ module control_unit (
     output reg  [2:0]  writeReg,      // Destination register
     output reg  [7:0]  immediate,     // 8-bit immediate value (for ADDI, LI)
     output reg         ALUSrc,         /// 0 = register, 1 = immediate
-    output reg  [1:0]  RegSrc         // 00 = ALU, 1 = immediate
+    output reg         RegSrc         // 00 = ALU, 1 = immediate
 );
 
     always @(*) begin
