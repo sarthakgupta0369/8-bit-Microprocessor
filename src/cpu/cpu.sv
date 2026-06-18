@@ -24,18 +24,25 @@ module cpu (
     wire        ALUSrc;
     wire [1:0]  BranchControl;
     wire        Branch;
+    wire        memWrite;
+    wire        memRead;
     
     
     // Register file
     wire [7:0]  readData1;
     wire [7:0]  readData2;
     wire [7:0]  writeData;
-    wire        RegSrc;
+    wire [1:0]      RegSrc;
     
     // ALU
     wire [7:0]  aluResult;
     wire [7:0]  aluInputB;
     wire        zero, carry, overflow, negative, sign, parity;
+    
+    //Data Memory
+    wire [7:0]  memAddress;
+    wire [7:0]  writeMem;
+    wire [7:0]  readMem;
     
     //Comparator
     wire        eq;
@@ -59,6 +66,8 @@ module cpu (
         .imm16(imm16),
         .ALUSrc(ALUSrc),
         .RegSrc(RegSrc),
+        .memWrite(memWrite),
+        .memRead(memRead),
         .Branch(Branch),
         .BranchControl(BranchControl)
     );
@@ -72,7 +81,7 @@ module cpu (
     );
     
     assign pc_plus1 = pc_current + 16'd1;
-    assign target_address = pc_plus1 + imm16;
+    assign target_address = pc_current + 16'd1 + imm16;
     
     comparator comp (
     .readData1(readData1),
@@ -120,7 +129,21 @@ module cpu (
         .sign(sign),
         .parity(parity)
     );
-
-     assign writeData = RegSrc ? imm8 : aluResult;
+     
+    ram data_memory (
+        .clk(clk),
+        .memWrite(memWrite),
+        .memRead(memRead),
+        .address(memAddress),
+        .writeMem(writeMem),
+        .readMem(readMem)
+    );
+    
+     assign memAddress = aluResult;
+     assign writeMem   = readData2;
+    
+     assign writeData = (RegSrc == 2'b00) ? aluResult:
+                       (RegSrc == 2'b01) ? imm8: 
+                       (RegSrc == 2'b10) ? readMem:8'd0;
 
 endmodule
