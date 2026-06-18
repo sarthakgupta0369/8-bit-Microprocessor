@@ -72,7 +72,7 @@ module cpu (
     );
     
     assign pc_plus1 = pc_current + 16'd1;
-    assign target_address = pc_current + 16'd1 + imm16;
+    assign target_address = pc_plus1 + imm16;
     
     comparator comp (
     .readData1(readData1),
