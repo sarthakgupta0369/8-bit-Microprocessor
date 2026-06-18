@@ -8,9 +8,13 @@ module control_unit (
     output reg  [2:0]  readReg1,      // First source register
     output reg  [2:0]  readReg2,      /// Second source register / shift amount
     output reg  [2:0]  writeReg,      // Destination register
-    output reg  [7:0]  immediate,     // 8-bit immediate value (for ADDI, LI)
+    output reg  [7:0]  imm8,     // 8-bit immediate value (for ADDI, LI)
+    output reg  [15:0] imm16,     //16-bit signextened offset for branches
     output reg         ALUSrc,         /// 0 = register, 1 = immediate
-    output reg         RegSrc         // 00 = ALU, 1 = immediate
+    output reg         RegSrc,         // 00 = ALU, 1 = immediate
+    output reg  [1:0] BranchControl, //Controls the Branch MUX
+    output reg        Branch         //Activates the branch signal
+    
 );
 
     always @(*) begin
@@ -19,9 +23,12 @@ module control_unit (
         readReg1   = 3'b000;
         readReg2   = 3'b000;
         writeReg   = 3'b000;
-        immediate  = 8'd0;
+        imm8  = 8'd0;
+        imm16 = 16'd0;
         ALUSrc     = 0;
         RegSrc     = 0;
+        Branch     = 0;
+        BranchControl = 2'b00;
 
         case (instruction[15:12])
             
@@ -53,7 +60,7 @@ module control_unit (
                 readReg1   = instruction[11:9];         
                 readReg2   = 3'b000;                    
                 writeReg   = instruction[5:3];         
-                immediate  = {{2{instruction[8]}}, instruction[8:6], instruction[2:0]}; 
+                imm8  = {{2{instruction[8]}}, instruction[8:6], instruction[2:0]}; 
                 ALUSrc     = 1;  // Use immediate
                 RegSrc     = 0;
             end
@@ -66,10 +73,71 @@ module control_unit (
                 readReg1   = 3'bxxx;                      
                 readReg2   = 3'bxxx;                      
                 writeReg   = instruction[5:3];            
-                immediate  = {instruction[10:6], instruction[2:0]}; 
+                imm8  = {instruction[10:6], instruction[2:0]}; 
                 ALUSrc     = 1;  
                 RegSrc     = 1;
             end
+            
+            //BEQ
+            
+            4'b0110: begin
+                RegWrite      = 0;
+                ALUControl    = 4'bxxxx;                    
+                readReg1      = instruction[11:9];          
+                readReg2      = instruction[8:6];                     
+                writeReg      = 3'bxxx;            
+                imm16         = {{10{instruction[5]}}, instruction[5:0]}; 
+                ALUSrc        = 1'bx;  
+                RegSrc        = 1'bx;
+                Branch        = 1;
+                BranchControl = 2'b00;
+            end
+            
+            //BNE
+            
+            4'b0111: begin
+                RegWrite      = 0;
+                ALUControl    = 4'bxxxx;                    
+                readReg1      = instruction[11:9];          
+                readReg2      = instruction[8:6];                     
+                writeReg      = 3'bxxx;            
+                imm16         = {{10{instruction[5]}}, instruction[5:0]}; 
+                ALUSrc        = 1'bx;  
+                RegSrc        = 1'bx;
+                Branch        = 1;
+                BranchControl = 2'b01;
+            end
+            
+            //BLT
+            
+            4'b1000: begin
+                RegWrite      = 0;
+                ALUControl    = 4'bxxxx;                    
+                readReg1      = instruction[11:9];          
+                readReg2      = instruction[8:6];                     
+                writeReg      = 3'bxxx;            
+                imm16         = {{10{instruction[5]}}, instruction[5:0]}; 
+                ALUSrc        = 1'bx;  
+                RegSrc        = 1'bx;
+                Branch        = 1;
+                BranchControl = 2'b10;
+            end           
+            
+            //BGE
+            
+            4'b1001: begin
+                RegWrite      = 0;
+                ALUControl    = 4'bxxxx;                    
+                readReg1      = instruction[11:9];          
+                readReg2      = instruction[8:6];                     
+                writeReg      = 3'bxxx;            
+                imm16         = {{10{instruction[5]}}, instruction[5:0]}; 
+                ALUSrc        = 1'bx;  
+                RegSrc        = 1'bx;
+                Branch        = 1;
+                BranchControl = 2'b11;
+            end
+            
             default: begin
                 // Keep defalts
             end
