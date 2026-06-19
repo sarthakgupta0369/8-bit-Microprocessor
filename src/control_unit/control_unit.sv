@@ -15,7 +15,8 @@ module control_unit (
     output reg         memWrite,
     output reg         memRead,
     output reg  [1:0]  BranchControl, //Controls the Branch MUX
-    output reg         Branch         //Activates the branch signal
+    output reg         Branch,         //Activates the branch signal
+    output reg         Jump           //jump signal //
     
 );
 
@@ -32,6 +33,7 @@ module control_unit (
         memWrite = 0;
         memRead  = 0;
         Branch     = 0;
+        Jump       = 0; //
         BranchControl = 2'b00;
 
         case (instruction[15:12])
@@ -172,6 +174,28 @@ module control_unit (
                 BranchControl = 2'b11;
             end
             
+            //JUMP
+
+            4'b1010: begin
+                ALUControl    = 4'bxxxx;
+                writeReg      = 3'bxxx;
+                imm16         = {{4{instruction[11]}}, instruction[11:0]}; 
+                ALUSrc        = 1'bx;  
+                RegSrc        = 2'bxx;
+                Jump          = 1;
+            end
+
+            //NOP
+
+            4'b1111: begin
+                ALUControl    = 4'bxxxx;
+                writeReg      = 3'bxxx;
+                imm8          = 8'dx;
+                imm16         = 16'dx;
+                ALUSrc        = 1'bx;
+                RegSrc        = 2'bxx;
+            end
+
             default: begin
                 // Keep defalts
             end
