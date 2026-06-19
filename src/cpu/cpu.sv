@@ -1,3 +1,4 @@
+
 `timescale 1ns / 1ps
 
 module cpu (
@@ -24,6 +25,7 @@ module cpu (
     wire        ALUSrc;
     wire [1:0]  BranchControl;
     wire        Branch;
+    wire        Jump; //
     wire        memWrite;
     wire        memRead;
     
@@ -69,6 +71,7 @@ module cpu (
         .memWrite(memWrite),
         .memRead(memRead),
         .Branch(Branch),
+        .Jump(Jump),                      //
         .BranchControl(BranchControl)
     );
 
@@ -81,7 +84,7 @@ module cpu (
     );
     
     assign pc_plus1 = pc_current + 16'd1;
-    assign target_address = pc_current + 16'd1 + imm16;
+    assign target_address = pc_plus1 + imm16;
     
     comparator comp (
     .readData1(readData1),
@@ -96,7 +99,7 @@ module cpu (
                          
     assign is_branch = branch_type&Branch;
     
-    assign pc_next = (is_branch)?target_address:pc_plus1;                    
+    assign pc_next = ((is_branch)|Jump)?target_address:pc_plus1;       //             
 
     instruction_memory imem (
         .pc(pc_current),
@@ -146,4 +149,4 @@ module cpu (
                        (RegSrc == 2'b01) ? imm8: 
                        (RegSrc == 2'b10) ? readMem:8'd0;
 
-endmodule
+endmodule// New file
