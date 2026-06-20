@@ -79,7 +79,7 @@ module control_unit (
                 readReg1   = 3'bxxx;                      
                 readReg2   = 3'bxxx;                      
                 writeReg   = instruction[5:3];            
-                imm8  = {instruction[10:6], instruction[2:0]}; 
+                imm8  = {instruction[11:6], instruction[2:1]}; 
                 ALUSrc     = 1;  
                 RegSrc     = 2'b01;
             end
