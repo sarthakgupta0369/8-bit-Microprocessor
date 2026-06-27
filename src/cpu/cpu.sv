@@ -6,7 +6,6 @@ module cpu (
     input  wire reset
 );
 
-    
     wire [15:0] pc_current;
     wire [15:0] pc_next;
     wire [15:0] pcAdderOut; //replaces "target_address"
@@ -33,6 +32,8 @@ module cpu (
     wire        memWrite;
     wire        memRead;
     wire        instructionDone; //signals the step counter to 0
+    
+    reg  [7:0]  imm8Reg; //register to store imm8
     
     wire [2:0]  readReg1;
     wire [2:0]  readReg2;
@@ -85,6 +86,10 @@ module cpu (
         .instructionDone(instructionDone)
     );
     
+    always @(posedge clk) begin
+        imm8Reg <= imm8;
+    end   
+  
     StepCounter sc_inst (
         .clk(clk),
         .reset(reset),
@@ -146,7 +151,7 @@ module cpu (
     assign readReg1 = instruction[11:9];
     assign readReg2 = instruction[8:6];
 
-    assign aluInputB = ALUSrc ? imm8 : readData2;
+    assign aluInputB = ALUSrc ? imm8Reg : readData2;
     
     alu alu_inst (
         .a(readData1),
@@ -181,8 +186,8 @@ module cpu (
     assign memAddress = aluOut;
     assign writeMem   = readData2;
     
-    assign writeData = (RegSrc == 2'b00) ? aluResult:
-                       (RegSrc == 2'b01) ? imm8: 
+    assign writeData = (RegSrc == 2'b00) ? aluOut:
+                       (RegSrc == 2'b01) ? imm8Reg: 
                        (RegSrc == 2'b10) ? memData:8'd0;
 
 endmodule
