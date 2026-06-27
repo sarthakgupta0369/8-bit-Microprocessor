@@ -9,10 +9,16 @@ module cpu (
     
     wire [15:0] pc_current;
     wire [15:0] pc_next;
-    wire [15:0] pc_plus1;
-    wire [15:0] target_address;
+    wire [15:0] pcAdderOut; //replaces "target_address"
+    wire        pc_write;
+    reg  [15:0] pcPlus1; //register that stores pcPlus1
+    
+    wire [15:0] pcAdderA;
+    wire [15:0] pcAdderB;
     
     wire [15:0] instruction;
+    
+    wire [2:0]  count; //step counter to Control Unit
     
     // Control signals
     wire        RegWrite;
@@ -28,6 +34,7 @@ module cpu (
     wire        Jump; //
     wire        memWrite;
     wire        memRead;
+    wire        instructionDone; //signals the step counter to 0
     
     
     // Register file
@@ -40,11 +47,13 @@ module cpu (
     wire [7:0]  aluResult;
     wire [7:0]  aluInputB;
     wire        zero, carry, overflow, negative, sign, parity;
+    reg  [7:0]  aluOut; //register to store aluResult
     
     //Data Memory
     wire [7:0]  memAddress;
     wire [7:0]  writeMem;
     wire [7:0]  readMem;
+    reg  [7:0]  memData; //register to store readMem
     
     //Comparator
     wire        eq;
@@ -55,10 +64,13 @@ module cpu (
     
     //signal to take branch
     wire is_branch;
+    
+    wire pcSrcAB; //controls the A and B input muxes of the pcAdder
 
     
     control_unit ctrl (
         .instruction(instruction),
+        .count (count),
         .RegWrite(RegWrite),
         .ALUControl(ALUControl),
         .readReg1(readReg1),
@@ -72,19 +84,35 @@ module cpu (
         .memRead(memRead),
         .Branch(Branch),
         .Jump(Jump),                      //
-        .BranchControl(BranchControl)
+        .BranchControl(BranchControl),
+        .instructionDone(instructionDone)
     );
-
+    
+    StepCounter sc_inst (
+        .clk(clk),
+        .reset(reset),
+        .instructionDone(instructionDone),
+        .count(count)
+    );
+    
     ProgramCounter pc_inst (
         .clk(clk),
         .rst(reset),
-        .pc_write(1'b1),
+        .pc_write(pc_write),
         .pc_next(pc_next),
         .pc(pc_current)
     );
     
-    assign pc_plus1 = pc_current + 16'd1;
-    assign target_address = pc_plus1 + imm16;
+    assign pcSrcAB = Branch|Jump;
+    assign pcAdderA = (pcSrcAB)?pcPlus1:pc_current;
+    assign pcAdderB = (pcSrcAB)?imm16:16'd1;
+    assign pcAdderOut = pcAdderA + pcAdderB;
+    
+    always @(posedge clk) begin
+        pcPlus1 <= pcAdderOut;    
+    end  
+
+    assign pc_write = instructionDone;
     
     comparator comp (
     .readData1(readData1),
@@ -99,7 +127,7 @@ module cpu (
                          
     assign is_branch = branch_type&Branch;
     
-    assign pc_next = ((is_branch)|Jump)?target_address:pc_plus1;       //             
+    assign pc_next = ((is_branch)|Jump)?pcAdderOut:pcPlus1;       //             
 
     instruction_memory imem (
         .pc(pc_current),
@@ -132,6 +160,10 @@ module cpu (
         .sign(sign),
         .parity(parity)
     );
+    
+    always @(posedge clk) begin //register to store aluResult
+        aluOut <= aluResult;
+    end 
      
     ram data_memory (
         .clk(clk),
@@ -142,11 +174,15 @@ module cpu (
         .readMem(readMem)
     );
     
-     assign memAddress = aluResult;
-     assign writeMem   = readData2;
+    always @(posedge clk) begin //register to store readMem
+        memData <= readMem;
+    end 
     
-     assign writeData = (RegSrc == 2'b00) ? aluResult:
+    assign memAddress = aluOut;
+    assign writeMem   = readData2;
+    
+    assign writeData = (RegSrc == 2'b00) ? aluResult:
                        (RegSrc == 2'b01) ? imm8: 
-                       (RegSrc == 2'b10) ? readMem:8'd0;
+                       (RegSrc == 2'b10) ? memData:8'd0;
 
-endmodule// New file
+endmodule
