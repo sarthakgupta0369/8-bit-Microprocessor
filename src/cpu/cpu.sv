@@ -23,8 +23,6 @@ module cpu (
     // Control signals
     wire        RegWrite;
     wire [3:0]  ALUControl;
-    wire [2:0]  readReg1;
-    wire [2:0]  readReg2;
     wire [2:0]  writeReg;
     wire [7:0]  imm8; 
     wire [15:0] imm16;
@@ -36,7 +34,8 @@ module cpu (
     wire        memRead;
     wire        instructionDone; //signals the step counter to 0
     
-    
+    wire [2:0]  readReg1;
+    wire [2:0]  readReg2;
     // Register file
     wire [7:0]  readData1;
     wire [7:0]  readData2;
@@ -73,8 +72,6 @@ module cpu (
         .count (count),
         .RegWrite(RegWrite),
         .ALUControl(ALUControl),
-        .readReg1(readReg1),
-        .readReg2(readReg2),
         .writeReg(writeReg),
         .imm8(imm8),
         .imm16(imm16),
@@ -145,6 +142,9 @@ module cpu (
         .readData1(readData1),
         .readData2(readData2)
     );
+    
+    assign readReg1 = instruction[11:9];
+    assign readReg2 = instruction[8:6];
 
     assign aluInputB = ALUSrc ? imm8 : readData2;
     
