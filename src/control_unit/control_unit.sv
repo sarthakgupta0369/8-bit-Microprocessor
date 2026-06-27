@@ -3,11 +3,8 @@
 module control_unit (
     input  wire [15:0] instruction,
     input  wire [2:0]  count,
-    
     output reg         RegWrite,     // Write to register file
     output reg  [3:0]  ALUControl,      // ALU operation
-    output reg  [2:0]  readReg1,      // First source register
-    output reg  [2:0]  readReg2,      /// Second source register / shift amount
     output reg  [2:0]  writeReg,      // Destination register
     output reg  [7:0]  imm8,     // 8-bit immediate value (for ADDI, LI)
     output reg  [15:0] imm16,     //16-bit signextened offset for branches
@@ -26,8 +23,6 @@ module control_unit (
     always @(*) begin
         RegWrite   = 0;
         ALUControl = 4'b0000;
-        readReg1   = 3'b000;
-        readReg2   = 3'b000;
         writeReg   = 3'b000;
         imm8  = 8'd0;
         imm16 = 16'd0;
@@ -43,9 +38,7 @@ module control_unit (
         case (instruction[15:12])
             
             4'b0000: begin
-                ALUControl = {1'b0, instruction[2:0]};  
-                readReg1   = instruction[11:9];        
-                readReg2   = instruction[8:6];        
+                ALUControl = {1'b0, instruction[2:0]};      
                 writeReg   = instruction[5:3];          
                 ALUSrc     = 0;
                 RegSrc     = 2'b00;
@@ -57,9 +50,7 @@ module control_unit (
 
             // R-TYPE SHIFT
             4'b0001: begin
-                ALUControl = {1'b1, instruction[2:0]};  
-                readReg1   = instruction[11:9];          
-                readReg2   = instruction[8:6];         
+                ALUControl = {1'b1, instruction[2:0]};        
                 writeReg   = instruction[5:3];       
                 ALUSrc     = 0;
                 RegSrc     = 2'b00;
@@ -71,9 +62,7 @@ module control_unit (
 
             //ADDI
             4'b0010: begin
-                ALUControl = 4'b0000;     // ADD
-                readReg1   = instruction[11:9];         
-                readReg2   = 3'b000;                    
+                ALUControl = 4'b0000;     // ADD                
                 writeReg   = instruction[5:3];         
                 imm8  = {{2{instruction[8]}}, instruction[8:6], instruction[2:0]}; 
                 ALUSrc     = 1'b1;  // Use immediate
@@ -100,7 +89,6 @@ module control_unit (
             //LOAD
             
             4'b0100: begin
-                readReg1   = instruction[11:9];
                 writeReg   = instruction[5:3];
                 imm8       = {{2{instruction[8]}}, instruction[8:6], instruction[2:0]};
                 ALUSrc     = 1'b1;
@@ -116,8 +104,6 @@ module control_unit (
             //STORE
             
              4'b0101: begin
-                readReg1 = instruction[11:9];
-                readReg2 = instruction[8:6];
                 imm8     = {{2{instruction[5]}}, instruction[5:0]};
                 ALUSrc   = 1'b1;
                 if (count == 3'd3) begin
@@ -128,9 +114,7 @@ module control_unit (
             
             //BEQ
             
-            4'b0110: begin                   
-                readReg1      = instruction[11:9];          
-                readReg2      = instruction[8:6];                                
+            4'b0110: begin                                              
                 imm16         = {{10{instruction[5]}}, instruction[5:0]}; 
                 BranchControl = 2'b00;
                 if(count == 3'd2) begin
@@ -141,9 +125,7 @@ module control_unit (
             
             //BNE
             
-            4'b0111: begin                 
-                readReg1      = instruction[11:9];          
-                readReg2      = instruction[8:6];                            
+            4'b0111: begin                                       
                 imm16         = {{10{instruction[5]}}, instruction[5:0]};
                 BranchControl = 2'b01; 
                 if(count == 3'd2) begin
@@ -154,9 +136,7 @@ module control_unit (
             
             //BLT
             
-            4'b1000: begin
-                readReg1      = instruction[11:9];          
-                readReg2      = instruction[8:6];                            
+            4'b1000: begin                          
                 imm16         = {{10{instruction[5]}}, instruction[5:0]}; 
                 BranchControl = 2'b10;
                 if(count == 3'd2) begin
@@ -167,9 +147,7 @@ module control_unit (
             
             //BGE
             
-            4'b1001: begin
-                readReg1      = instruction[11:9];          
-                readReg2      = instruction[8:6];                            
+            4'b1001: begin                         
                 imm16         = {{10{instruction[5]}}, instruction[5:0]}; 
                 BranchControl = 2'b11;
                 if(count == 3'd2) begin
