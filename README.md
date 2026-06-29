@@ -7,4 +7,4 @@
 ---
 
 # Single-Cycle
-![Single_Cycle_Datapath](https://www.pasteboard.co/mVtTi_hD-71d.png)
+![Single_Cycle_Datapath](Single_Cycle_Datapath.png)
