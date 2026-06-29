@@ -172,6 +172,7 @@ module cpu (
      
     ram data_memory (
         .clk(clk),
+        .reset(reset),
         .memWrite(memWrite),
         .memRead(memRead),
         .address(memAddress),
