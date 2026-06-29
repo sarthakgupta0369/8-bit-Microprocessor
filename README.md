@@ -7,4 +7,4 @@
 ---
 
 # Single-Cycle
-![Single_Cycle_Datapath](Single_Cycle_Datapath.png)
+![Single_Cycle_Datapath](Single_Cylce_Datapath.png)
