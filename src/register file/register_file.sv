@@ -14,8 +14,8 @@ module register_file(
   
   reg [7:0] regfile [7:0];
   
-  assign readData1 = regfile[readReg1];
-  assign readData2 = regfile[readReg2];
+  assign readData1 = (RegWrite && (readReg1 == writeReg)) ? writeData : regfile[readReg1];
+  assign readData2 = (RegWrite && (readReg2 == writeReg)) ? writeData : regfile[readReg2];
   
   integer  i;
   
