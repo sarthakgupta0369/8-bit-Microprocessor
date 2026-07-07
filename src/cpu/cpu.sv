@@ -5,9 +5,9 @@ module cpu (
     input  wire reset
 );//IF
     
-    wire [15:0] pc_current;
-    wire [15:0] pc_plus1;
-    wire [15:0] pc_next;
+    wire [15:0] pcCurrent;
+    wire [15:0] pcPlus1;
+    wire [15:0] pcNext;
     wire [15:0] instructionF;        
     
     wire [15:0] target_addressE;
@@ -19,28 +19,28 @@ module cpu (
         .clk      (clk),
         .rst      (reset),
         .pc_write (1'b1),
-        .pc_next  (pc_next),
-        .pc       (pc_current)
+        .pc_next  (pcNext),
+        .pc       (pcCurrent)
     );
 
-    assign pc_plus1 = pc_current + 16'd1;
+    assign pcPlus1 = pcCurrent + 16'd1;
 
    
     instruction_memory imem (
-        .pc          (pc_current),
+        .pc          (pcCurrent),
         .instruction (instructionF)
     );
 
     //IF /ID
-    wire [15:0] pc_plus1D;
+    wire [15:0] pcPlus1D;
     wire [15:0] instructionD;
 
     IF_ID if_id (
         .clk           (clk),
         .reset         (reset),
-        .pc_plus1I     (pc_plus1),
+        .pcPlus1I     (pcPlus1),
         .instructionI  (instructionF),
-        .pc_plus1D     (pc_plus1D),
+        .pcPlus1D     (pcPlus1D),
         .instructionD  (instructionD)
     );
 
@@ -121,7 +121,7 @@ module cpu (
     ID_EX id_ex (
         .clk            (clk),
         .reset          (reset),
-        .pcPlus1D       (pc_plus1D),
+        .pcPlus1D       (pcPlus1D),
         .readData1D     (readData1D),
         .readData2D     (readData2D),
         .writeRegD      (writeRegD),
@@ -194,7 +194,7 @@ module cpu (
 
     assign target_addressE = pcPlus1E + imm16E;
 
-    assign pc_next = (is_branchE | jumpE) ? target_addressE : pc_plus1;
+    assign pc_next = (is_branchE | jumpE) ? target_addressE : pcPlus1;
 
     // EX/MEM
     wire [7:0]  readData2M;
