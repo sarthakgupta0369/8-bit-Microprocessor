@@ -1,153 +1,273 @@
-
 `timescale 1ns / 1ps
 
 module cpu (
     input  wire clk,
     input  wire reset
-);
-
+);//IF
     
     wire [15:0] pc_current;
-    wire [15:0] pc_next;
     wire [15:0] pc_plus1;
-    wire [15:0] target_address;
+    wire [15:0] pc_next;
+    wire [15:0] instructionF;        
     
-    wire [15:0] instruction;
-    
-    // Control signals
-    wire        RegWrite;
-    wire [3:0]  ALUControl;
-    wire [2:0]  readReg1;
-    wire [2:0]  readReg2;
-    wire [2:0]  writeReg;
-    wire [7:0]  imm8; 
-    wire [15:0] imm16;
-    wire        ALUSrc;
-    wire [1:0]  BranchControl;
-    wire        Branch;
-    wire        Jump; //
-    wire        memWrite;
-    wire        memRead;
-    
-    
-    // Register file
-    wire [7:0]  readData1;
-    wire [7:0]  readData2;
-    wire [7:0]  writeData;
-    wire [1:0]      RegSrc;
-    
-    // ALU
-    wire [7:0]  aluResult;
-    wire [7:0]  aluInputB;
-    wire        zero, carry, overflow, negative, sign, parity;
-    
-    //Data Memory
-    wire [7:0]  memAddress;
-    wire [7:0]  writeMem;
-    wire [7:0]  readMem;
-    
-    //Comparator
-    wire        eq;
-    wire        lt;
-    
-    //Branch MUX output
-    wire branch_type;
-    
-    //signal to take branch
-    wire is_branch;
+    wire [15:0] target_addressE;
+    wire        is_branchE;
+    wire        jumpE;
 
-    
-    control_unit ctrl (
-        .instruction(instruction),
-        .RegWrite(RegWrite),
-        .ALUControl(ALUControl),
-        .readReg1(readReg1),
-        .readReg2(readReg2),
-        .writeReg(writeReg),
-        .imm8(imm8),
-        .imm16(imm16),
-        .ALUSrc(ALUSrc),
-        .RegSrc(RegSrc),
-        .memWrite(memWrite),
-        .memRead(memRead),
-        .Branch(Branch),
-        .Jump(Jump),                      //
-        .BranchControl(BranchControl)
-    );
 
     ProgramCounter pc_inst (
-        .clk(clk),
-        .rst(reset),
-        .pc_write(1'b1),
-        .pc_next(pc_next),
-        .pc(pc_current)
+        .clk      (clk),
+        .rst      (reset),
+        .pc_write (1'b1),
+        .pc_next  (pc_next),
+        .pc       (pc_current)
     );
-    
-    assign pc_plus1 = pc_current + 16'd1;
-    assign target_address = pc_plus1 + imm16;
-    
-    comparator comp (
-    .readData1(readData1),
-    .readData2(readData2),
-    .eq(eq),
-    .lt(lt)
-    );
-    
-    assign branch_type = (BranchControl == 2'b00)? eq:
-                         (BranchControl == 2'b01)? ~eq:
-                         (BranchControl == 2'b10)? lt:~lt;
-                         
-    assign is_branch = branch_type&Branch;
-    
-    assign pc_next = ((is_branch)|Jump)?target_address:pc_plus1;       //             
 
+    assign pc_plus1 = pc_current + 16'd1;
+
+   
     instruction_memory imem (
-        .pc(pc_current),
-        .instruction(instruction)
+        .pc          (pc_current),
+        .instruction (instructionF)
     );
+
+    //IF /ID
+    wire [15:0] pc_plus1D;
+    wire [15:0] instructionD;
+
+    IF_ID if_id (
+        .clk           (clk),
+        .reset         (reset),
+        .pc_plus1I     (pc_plus1),
+        .instructionI  (instructionF),
+        .pc_plus1D     (pc_plus1D),
+        .instructionD  (instructionD)
+    );
+
+
+  //ID
+
+    wire        RegWriteD;
+    wire [3:0]  ALUControlD;
+    wire [2:0]  readReg1D;
+    wire [2:0]  readReg2D;
+    wire [2:0]  writeRegD;
+    wire [7:0]  imm8D;
+    wire [15:0] imm16D;
+    wire        ALUSrcD;
+    wire [1:0]  RegSrcD;
+    wire        memWriteD;
+    wire        memReadD;
+    wire [1:0]  BranchControlD;
+    wire        BranchD;
+    wire        JumpD;
+
+    control_unit ctrl (
+        .instruction    (instructionD),
+        .RegWrite       (RegWriteD),
+        .ALUControl     (ALUControlD),
+        .readReg1       (readReg1D),
+        .readReg2       (readReg2D),
+        .writeReg       (writeRegD),
+        .imm8           (imm8D),
+        .imm16          (imm16D),
+        .ALUSrc         (ALUSrcD),
+        .RegSrc         (RegSrcD),
+        .memWrite       (memWriteD),
+        .memRead        (memReadD),
+        .Branch         (BranchD),
+        .Jump           (JumpD),
+        .BranchControl  (BranchControlD)
+    );
+
+   
+    wire [7:0] readData1D;
+    wire [7:0] readData2D;
+
+// write feedback
+    wire [7:0] writeDataW;
+    wire       RegWriteW;
+    wire [2:0] writeRegW;
 
     register_file regfile (
-        .clk(clk),
-        .RegWrite(RegWrite),
-        .reset(reset),
-        .readReg1(readReg1),
-        .readReg2(readReg2),
-        .writeReg(writeReg),
-        .writeData(writeData),
-        .readData1(readData1),
-        .readData2(readData2)
+        .clk       (clk),
+        .RegWrite  (RegWriteW),
+        .reset     (reset),
+        .readReg1  (readReg1D),
+        .readReg2  (readReg2D),
+        .writeReg  (writeRegW),
+        .writeData (writeDataW),
+        .readData1 (readData1D),
+        .readData2 (readData2D)
     );
 
-    assign aluInputB = ALUSrc ? imm8 : readData2;
-    
+ //ID/ EX
+    wire [15:0] pcPlus1E;
+    wire [7:0]  readData1E;
+    wire [7:0]  readData2E;
+    wire [2:0]  writeRegE;
+    wire        regWriteE;
+    wire [3:0]  aluControlE;
+    wire [7:0]  imm8E;
+    wire [15:0] imm16E;
+    wire        aluSrcE;
+    wire [1:0]  regSrcE;
+    wire        memWriteE;
+    wire        memReadE;
+    wire [1:0]  branchControlE;
+    wire        branchE;
+    wire        jumpE;
+
+    ID_EX id_ex (
+        .clk            (clk),
+        .reset          (reset),
+        .pcPlus1D       (pc_plus1D),
+        .readData1D     (readData1D),
+        .readData2D     (readData2D),
+        .writeRegD      (writeRegD),
+        .regWriteD      (RegWriteD),
+        .aluControlD    (ALUControlD),
+        .imm8D          (imm8D),
+        .imm16D         (imm16D),
+        .aluSrcD        (ALUSrcD),
+        .regSrcD        (RegSrcD),
+        .memWriteD      (memWriteD),
+        .memReadD       (memReadD),
+        .branchControlD (BranchControlD),
+        .branchD        (BranchD),
+        .jumpD          (JumpD),
+        .pcPlus1E       (pcPlus1E),
+        .readData1E     (readData1E),
+        .readData2E     (readData2E),
+        .writeRegE      (writeRegE),
+        .regWriteE      (regWriteE),
+        .aluControlE    (aluControlE),
+        .imm8E          (imm8E),
+        .imm16E         (imm16E),
+        .aluSrcE        (aluSrcE),
+        .regSrcE        (regSrcE),
+        .memWriteE      (memWriteE),
+        .memReadE       (memReadE),
+        .branchControlE (branchControlE),
+        .branchE        (branchE),
+        .jumpE          (jumpE)
+    );
+
+    // ALU
+    wire [7:0] aluInputB;
+    wire [7:0] aluResultE;
+    wire       zero, carry, overflow, negative, sign, parity;
+
+    assign aluInputB = aluSrcE ? imm8E : readData2E;
+
     alu alu_inst (
-        .a(readData1),
-        .b(aluInputB),
-        .alu_ctrl(ALUControl),
-        .result(aluResult),
-        .zero(zero),
-        .carry(carry),
-        .overflow(overflow),
-        .negative(negative),
-        .sign(sign),
-        .parity(parity)
+        .a        (readData1E),
+        .b        (aluInputB),
+        .alu_ctrl (aluControlE),
+        .result   (aluResultE),
+        .zero     (zero),
+        .carry    (carry),
+        .overflow (overflow),
+        .negative (negative),
+        .sign     (sign),
+        .parity   (parity)
     );
-     
-    ram data_memory (
-        .clk(clk),
-        .reset(reset),
-        .memWrite(memWrite),
-        .memRead(memRead),
-        .address(memAddress),
-        .writeMem(writeMem),
-        .readMem(readMem)
-    );
-    
-     assign memAddress = aluResult;
-     assign writeMem   = readData2;
-    
-     assign writeData = (RegSrc == 2'b00) ? aluResult:
-                       (RegSrc == 2'b01) ? imm8: 
-                       (RegSrc == 2'b10) ? readMem:8'd0;
 
-endmodule// New file
+  //branch
+    wire eq;
+    wire lt;
+    wire branch_type;
+
+    comparator comp (
+        .readData1 (readData1E),
+        .readData2 (readData2E),
+        .eq        (eq),
+        .lt        (lt)
+    );
+
+
+    assign branch_type = (branchControlE == 2'b00) ? eq  :
+                         (branchControlE == 2'b01) ? ~eq :
+                         (branchControlE == 2'b10) ? lt  : ~lt;
+
+    assign is_branchE = branch_type & branchE;
+
+    assign target_addressE = pcPlus1E + imm16E;
+
+    assign pc_next = (is_branchE | jumpE) ? target_addressE : pc_plus1;
+
+    // EX/MEM
+    wire [7:0]  readData2M;
+    wire [2:0]  writeRegM;
+    wire [7:0]  aluResultM;
+    wire        regWriteM;
+    wire [7:0]  imm8M;
+    wire [1:0]  regSrcM;
+    wire        memWriteM;
+    wire        memReadM;
+
+    EX_MEM ex_mem (
+        .clk        (clk),
+        .reset      (reset),
+        .readData2E (readData2E),
+        .writeRegE  (writeRegE),
+        .aluResultE (aluResultE),
+        .regWriteE  (regWriteE),
+        .imm8E      (imm8E),
+        .regSrcE    (regSrcE),
+        .memWriteE  (memWriteE),
+        .memReadE   (memReadE),
+        .readData2M (readData2M),
+        .writeRegM  (writeRegM),
+        .aluResultM (aluResultM),
+        .regWriteM  (regWriteM),
+        .imm8M      (imm8M),
+        .regSrcM    (regSrcM),
+        .memWriteM  (memWriteM),
+        .memReadM   (memReadM)
+    );
+
+    // MEM
+
+    wire [7:0] readMemM;
+
+    ram data_memory (
+        .clk       (clk),
+        .reset     (reset),
+        .memWrite  (memWriteM),
+        .memRead   (memReadM),
+        .address   (aluResultM),
+        .writeMem  (readData2M),
+        .readMem   (readMemM)
+    );
+
+    // MEM/WB 
+    wire [7:0]  aluResultW;
+    wire [7:0]  readMemW;
+    wire [7:0]  imm8W;
+    wire [1:0]  regSrcW;
+
+    MEM_WB mem_wb (
+        .clk        (clk),
+        .reset      (reset),
+        .writeRegM  (writeRegM),
+        .aluResultM (aluResultM),
+        .readMemM   (readMemM),
+        .regWriteM  (regWriteM),
+        .imm8M      (imm8M),
+        .regSrcM    (regSrcM),
+        .writeRegW  (writeRegW),
+        .aluResultW (aluResultW),
+        .readMemW   (readMemW),
+        .regWriteW  (RegWriteW),
+        .imm8W      (imm8W),
+        .regSrcW    (regSrcW)
+    );
+
+
+    // WB
+    assign writeDataW = (regSrcW == 2'b00) ? aluResultW :
+                        (regSrcW == 2'b01) ? imm8W      :
+                        (regSrcW == 2'b10) ? readMemW   : 8'd0;
+
+endmodule
