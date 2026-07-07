@@ -3,7 +3,7 @@
 module register_file(
   input wire clk,
   input wire RegWrite,
-  input wire reset,            //??
+  input wire reset,            
   input wire [2:0] readReg1,
   input wire [2:0] readReg2,
   input wire [2:0] writeReg,
