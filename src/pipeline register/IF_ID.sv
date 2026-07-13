@@ -3,6 +3,8 @@
 module IF_ID (
     input             clk,
     input             reset,
+    input             clr,
+    input             en,
     
     input wire [15:0] pcPlus1I,
     input wire [15:0] instructionI,
@@ -12,13 +14,21 @@ module IF_ID (
 );
 
     always @(posedge clk) begin
-        if (~reset) begin
-            pcPlus1D    <= pcPlus1I;
-            instructionD <= instructionI;
-        end 
-        else begin
-            pcPlus1D    <= 16'd0;
+       if (reset) begin
+            pcPlus1D     <= 16'd0;
             instructionD <= 16'd0;
+        end
+        else if (clr) begin
+            pcPlus1D     <= pcPlus1I;          
+            instructionD <= {{4{1'b1}},{12{1'b0}}};          
+        end
+        else if (~en) begin
+            pcPlus1D     <= pcPlus1D;          
+            instructionD <= instructionD;      
+        end
+        else begin
+            pcPlus1D     <= pcPlus1I;
+            instructionD <= instructionI;
         end
     end
 endmodule
