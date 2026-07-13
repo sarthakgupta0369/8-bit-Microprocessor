@@ -2,8 +2,8 @@
 
 module register_file(
   input wire clk,
-  input wire RegWrite,
-  input wire reset,            //??
+  input wire regWrite,
+  input wire reset,            
   input wire [2:0] readReg1,
   input wire [2:0] readReg2,
   input wire [2:0] writeReg,
@@ -14,8 +14,8 @@ module register_file(
   
   reg [7:0] regfile [7:0];
   
-  assign readData1 = regfile[readReg1];
-  assign readData2 = regfile[readReg2];
+  assign readData1 = (regWrite && (readReg1 == writeReg)) ? writeData : regfile[readReg1];
+  assign readData2 = (regWrite && (readReg2 == writeReg)) ? writeData : regfile[readReg2];
   
   integer  i;
   
@@ -25,7 +25,7 @@ module register_file(
       regfile[i] <= 8'd0;
       end
     end
-    else if(RegWrite) begin
+    else if(regWrite) begin
       regfile[writeReg] <= writeData;
     end
   end
