@@ -3,6 +3,7 @@
 module ID_EX (
     input             clk,
     input             reset,
+    input             clr, //added clr
     
     //data
     input wire  [15:0] pcPlus1D,
@@ -44,7 +45,7 @@ module ID_EX (
 );
 
     always @(posedge clk) begin
-        if (~reset) begin
+        if (~(reset | clr)) begin
             pcPlus1E        <= pcPlus1D;
             readData1E      <= readData1D;
             readData2E      <= readData2D;
