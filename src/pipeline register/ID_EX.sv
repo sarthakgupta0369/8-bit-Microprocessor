@@ -3,13 +3,15 @@
 module ID_EX (
     input             clk,
     input             reset,
-    input             clr, //added clr
+    input             clr,
     
     //data
     input wire  [15:0] pcPlus1D,
     input wire  [7:0]  readData1D,
     input wire  [7:0]  readData2D,
     input wire  [2:0]  writeRegD, 
+    input wire  [2:0]  readReg1D,
+    input wire  [2:0]  readReg2D,
     
     //control signals
     input wire         regWriteD,     
@@ -29,6 +31,8 @@ module ID_EX (
     output reg  [7:0]  readData1E,
     output reg  [7:0]  readData2E,
     output reg  [2:0]  writeRegE, 
+    output reg  [2:0]  readReg1E,
+    output reg  [2:0]  readReg2E,
     
     //control signals
     output reg         regWriteE,     
@@ -45,13 +49,15 @@ module ID_EX (
 );
 
     always @(posedge clk) begin
-        if (~(reset | clr)) begin
+        if (~(reset|clr)) begin
             pcPlus1E        <= pcPlus1D;
             readData1E      <= readData1D;
             readData2E      <= readData2D;
             regWriteE       <= regWriteD;
             aluControlE     <= aluControlD;
             writeRegE       <= writeRegD;
+            readReg1E       <= readReg1D;
+            readReg2E       <= readReg2D;
             imm8E           <= imm8D;
             imm16E          <= imm16D;
             aluSrcE         <= aluSrcD;
@@ -69,6 +75,8 @@ module ID_EX (
             regWriteE       <= 1'b0;
             aluControlE     <= 4'd0;
             writeRegE       <= 3'd0;
+            readReg1E       <= 3'd0;
+            readReg2E       <= 3'd0;
             imm8E           <= 8'd0;
             imm16E          <= 16'd0;
             aluSrcE         <= 1'b0;
