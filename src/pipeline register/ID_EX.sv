@@ -4,6 +4,7 @@ module ID_EX (
     input             clk,
     input             reset,
     input             clr,
+    input             en,
     
     //data
     input wire  [15:0] pcPlus1D,
@@ -68,35 +69,7 @@ module ID_EX (
 );
 
     always @(posedge clk) begin
-        if (~(reset|clr)) begin
-            pcPlus1E        <= pcPlus1D;
-            readData1E      <= readData1D;
-            readData2E      <= readData2D;
-            regWriteE       <= regWriteD;
-            aluControlE     <= aluControlD;
-            writeRegE       <= writeRegD;
-            readReg1E       <= readReg1D;
-            readReg2E       <= readReg2D;
-            imm8E           <= imm8D;
-            imm16E          <= imm16D;
-            aluSrcAE        <= aluSrcAD;
-            aluSrcBE        <= aluSrcBD;
-            regSrcE         <= regSrcD;
-            memWriteE       <= memWriteD;
-            memReadE        <= memReadD;
-            branchControlE  <= branchControlD;
-            branchE         <= branchD;
-            stackReadE      <= stackReadD;
-            stackWriteE     <= stackWriteD;
-            stackSrcE       <= stackSrcD;
-            spE             <= spD;
-            jrjalrE         <= jrjalrD;
-            readLRE         <= readLRD;
-            spWriteE        <= spWriteD;
-            spSrcE          <= spSrcD;
-            popWriteE       <= popWriteD;
-        end 
-        else begin
+        if (reset||clr) begin
             pcPlus1E        <= 16'd0;
             readData1E      <= 8'd0;
             readData2E      <= 8'd0;
@@ -123,6 +96,62 @@ module ID_EX (
             spWriteE        <= 1'b0;
             spSrcE          <= 1'b0;
             popWriteE       <= 1'b0;
+        end 
+        else if (~en) begin
+            pcPlus1E        <= pcPlus1E;
+            readData1E      <= readData1E;
+            readData2E      <= readData2E;
+            regWriteE       <= regWriteE;
+            aluControlE     <= aluControlE;
+            writeRegE       <= writeRegE;
+            readReg1E       <= readReg1E;
+            readReg2E       <= readReg2E;
+            imm8E           <= imm8E;
+            imm16E          <= imm16E;
+            aluSrcAE        <= aluSrcAE;
+            aluSrcBE        <= aluSrcBE;
+            regSrcE         <= regSrcE;
+            memWriteE       <= memWriteE;
+            memReadE        <= memReadE;
+            branchControlE  <= branchControlE;
+            branchE         <= branchE;
+            stackReadE      <= stackReadE;
+            stackWriteE     <= stackWriteE;
+            stackSrcE       <= stackSrcE;
+            spE             <= spE;
+            jrjalrE         <= jrjalrE;
+            readLRE         <= readLRE;
+            spWriteE        <= spWriteE;
+            spSrcE          <= spSrcE;
+            popWriteE       <= popWriteE;
+        end
+        else begin
+            pcPlus1E        <= pcPlus1D;
+            readData1E      <= readData1D;
+            readData2E      <= readData2D;
+            regWriteE       <= regWriteD;
+            aluControlE     <= aluControlD;
+            writeRegE       <= writeRegD;
+            readReg1E       <= readReg1D;
+            readReg2E       <= readReg2D;
+            imm8E           <= imm8D;
+            imm16E          <= imm16D;
+            aluSrcAE        <= aluSrcAD;
+            aluSrcBE        <= aluSrcBD;
+            regSrcE         <= regSrcD;
+            memWriteE       <= memWriteD;
+            memReadE        <= memReadD;
+            branchControlE  <= branchControlD;
+            branchE         <= branchD;
+            stackReadE      <= stackReadD;
+            stackWriteE     <= stackWriteD;
+            stackSrcE       <= stackSrcD;
+            spE             <= spD;
+            jrjalrE         <= jrjalrD;
+            readLRE         <= readLRD;
+            spWriteE        <= spWriteD;
+            spSrcE          <= spSrcD;
+            popWriteE       <= popWriteD;
         end
     end
 endmodule
