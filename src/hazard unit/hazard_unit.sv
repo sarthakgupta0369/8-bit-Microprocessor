@@ -15,8 +15,22 @@ module hazard_unit(
     input  wire [2:0]  writeRegE,      // Destination reg [5:3] of instr in EX
     input  wire        regWriteE,
     
+    input wire         linkWriteD,
+    input wire         jrjalrD,
+    input wire         jrjalrE,
+    input wire         spWriteE,
+    input wire         spWriteM,
+    input wire         popWriteE,
+    input wire         popWriteNewNewW,
+    input wire         stackReadE,
+    input wire         stackWriteE,
+    
     output reg [1:0] forwardAE,        //forward signals to contorl the MUXes near alu input
     output reg [1:0] forwardBE,
+    output reg       forwardSPE,
+    output reg       forwardLRE,
+    
+    output wire       isJAL,
 
     output wire        stall,         // 1 = freeze PC & IF/ID, bubble ID/EX
     output             flushIFID,
@@ -58,6 +72,21 @@ module hazard_unit(
         end
      end
     
+    always @(*) begin
+        if(spWriteE && spWriteM) begin
+            forwardSPE = 1'b1;
+        end  
+        else begin
+            forwardSPE = 1'b0;
+        end
+        if (popWriteNewNewW && jrjalrE || (linkWriteD && popWriteNewNewW)) begin
+            forwardLRE = 1'b1;
+        end
+        else begin
+            forwardLRE = 1'b0;
+        end
+    end  
+
     //stall
     wire [3:0] opcodeD = instructionD[15:12];
 
@@ -71,7 +100,8 @@ module hazard_unit(
         (opcodeD == 4'b0110)|   // BEQ
         (opcodeD == 4'b0111)|   // BNE
         (opcodeD == 4'b1000)|    // BLT
-        (opcodeD == 4'b1001);    // BGE
+        (opcodeD == 4'b1001)|    //BGE
+        (opcodeD == 4'b1011 && instructionD[0] == 1'b1);    //PUSH 
 
     // read [8:6]
     wire usesRs2_D =
@@ -85,11 +115,16 @@ module hazard_unit(
 
     wire rs1Hazard = usesRs1_D && (instructionD[11:9] == writeRegE);
     wire rs2Hazard = usesRs2_D && (instructionD[8:6]  == writeRegE);
-
-    assign stall = memReadE && (rs1Hazard || rs2Hazard);
+    
+    wire popLRStall  = popWriteE && (jrjalrD||(opcodeD == 4'b1011 && instructionD[0] == 1'b0)); //when POP LR followed by JR or by PUSH LR
+    wire popRStall = ((rs1Hazard||rs2Hazard)) && stackReadE && ~popWriteE; //POP R followed by R type
+    
+    assign stall = (memReadE && (rs1Hazard || rs2Hazard))|| popLRStall || popRStall;
     
     //flush
-    assign flushIFID = is_branchE || (opcodeD == 4'b1010);
-    assign flushIDEX = is_branchE || stall; 
-        
+    assign flushIFID = is_branchE || (opcodeD == 4'b1010 && instructionD[1] == 1'b0)||jrjalrE;
+    assign flushIDEX = is_branchE || stall || jrjalrE; 
+    
+    //signals
+     assign isJAL = ((opcodeD == 4'b1010)&&(instructionD[1:0] == 2'b01))? 1'b1 : 1'b0;  
 endmodule
