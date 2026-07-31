@@ -4,7 +4,6 @@ module cpu (
     input  wire clk,
     input  wire reset
 );//IF
-    
     wire [15:0] pcCurrent;
     wire [15:0] pcPlus1;
     wire [15:0] pcNext;
@@ -15,6 +14,146 @@ module cpu (
     wire        pcSrc; // added pcSrc wire
     wire        flushIFID;
     wire        stall;
+    
+    //IF /ID
+    wire [15:0] pcPlus1D;
+    wire [15:0] instructionD;
+    
+    //ID
+    wire        regWriteD;
+    wire [3:0]  aluControlD;
+    wire [2:0]  readReg1D;
+    wire [2:0]  readReg2D;
+    wire [2:0]  writeRegD;
+    wire [7:0]  imm8D;
+    wire [15:0] imm16D;
+    wire        aluSrcAD;
+    wire [1:0]  aluSrcBD;
+    wire [1:0]  regSrcD;
+    wire        memWriteD;
+    wire        memReadD;
+    wire [1:0]  branchControlD;
+    wire        branchD;
+    wire        jumpD;
+    
+    wire [7:0] readData1D;
+    wire [7:0] readData2D;
+    
+    wire        stackReadD;
+    wire        stackWriteD;
+    wire        stackSrcD;
+    wire        spSrcD;
+    
+    wire        linkWriteD;
+    wire        jrjalrD;
+    
+    wire        popWriteD;
+    
+    //stack pointer
+    wire        spWriteD;
+    wire [7:0]  writeSP;
+    wire [7:0]  spD;
+    
+    //link register
+    wire [15:0] newLR;
+    wire [15:0] readLRD;
+    wire        linkWritePC;
+    wire        writeLR;
+
+    //ID/ EX
+    wire [15:0] pcPlus1E;
+    wire [7:0]  readData1E;
+    wire [7:0]  readData2E;
+    wire [2:0]  readReg1E;
+    wire [2:0]  readReg2E;
+    wire [2:0]  writeRegE;
+    wire        regWriteE;
+    wire [3:0]  aluControlE;
+    wire [7:0]  imm8E;
+    wire [15:0] imm16E;
+    wire        aluSrcAE;
+    wire [1:0]  aluSrcBE;
+    wire [1:0]  regSrcE;
+    wire        memWriteE;
+    wire        memReadE;
+    wire [1:0]  branchControlE;
+    wire        branchE;
+    wire        flushIDEX;
+    
+    wire        stackSrcE;
+    wire [7:0]  spE;
+    wire        stackReadE;
+    wire        stackWriteE;
+    wire [15:0] stackDataE;
+    wire [7:0]  stackAddrE;
+    wire        spSrcE;
+    wire        jrjalrE;
+    wire [7:0]  spForwardE;
+    wire        forwardSPE;
+    wire        forwardLRE;
+    wire [15:0] lrForwardE;
+    wire [15:0] readLRE;
+    
+    wire        popWriteE;
+    wire        popWriteNewE;
+    
+    // alu
+    wire [7:0] operandAE;
+    wire [7:0] operandBE; //the wire that goes into the aluInputB MUX 
+    wire [7:0] aluInputA;
+    wire [7:0] aluInputB;
+    wire [7:0] aluResultE;
+    wire       zero, carry, overflow, negative, sign, parity;
+    wire [1:0] forwardAE;
+    wire [1:0] forwardBE;
+
+    //branch
+    wire eq;
+    wire lt;
+    wire branch_type;
+
+    // EX/MEM
+    wire [7:0]  operandBM;
+    wire [2:0]  writeRegM;
+    wire [7:0]  aluResultM;
+    wire        regWriteM; 
+    wire [7:0]  imm8M;
+    wire [1:0]  regSrcM;
+    wire        memWriteM;
+    wire        memReadM;
+    
+    wire        popWriteNewM;
+    wire        popWriteNewNewM;
+    
+    // MEM
+    wire [7:0] readMemM;
+    
+    //stack
+    wire        stackWriteM;
+    wire        stackReadM;
+    wire [7:0]  stackAddrM;
+    wire [15:0] stackDataM;
+    wire [15:0] readStackM;
+    
+    wire        spWriteM;
+    
+    // MEM/WB 
+    wire [7:0]  aluResultW;
+    wire [7:0]  readMemW;
+    wire [7:0]  imm8W;
+    wire [1:0]  regSrcW;
+    
+    wire [15:0] readStackW;
+    
+    wire        popWriteNewNewW;
+    
+// write feedback
+    wire [7:0] writeDataW;
+    wire       regWriteW;
+    wire [2:0] writeRegW;
+    
+    //hazard unit
+    wire       isJAL;
 
     ProgramCounter pc_inst (
         .clk      (clk),
@@ -26,15 +165,10 @@ module cpu (
 
     assign pcPlus1 = pcCurrent + 16'd1;
 
-   
     instruction_memory imem (
         .pc          (pcCurrent),
         .instruction (instructionF)
     );
-
-    //IF /ID
-    wire [15:0] pcPlus1D;
-    wire [15:0] instructionD;
 
     IF_ID if_id (
         .clk          (clk),
@@ -47,52 +181,51 @@ module cpu (
         .instructionD (instructionD)
     );
 
-
-  //ID
-
-    wire        regWriteD;
-    wire [3:0]  aluControlD;
-    wire [2:0]  readReg1D;
-    wire [2:0]  readReg2D;
-    wire [2:0]  writeRegD;
-    wire [7:0]  imm8D;
-    wire [15:0] imm16D;
-    wire        aluSrcD;
-    wire [1:0]  regSrcD;
-    wire        memWriteD;
-    wire        memReadD;
-    wire [1:0]  branchControlD;
-    wire        branchD;
-    wire        jumpD;
-
     control_unit ctrl (
         .instruction    (instructionD),
         .regWrite       (regWriteD),
         .aluControl     (aluControlD),
-        .readReg1       (readReg1D),
-        .readReg2       (readReg2D),
-        .writeReg       (writeRegD),
         .imm8           (imm8D),
         .imm16          (imm16D),
-        .aluSrc         (aluSrcD),
+        .aluSrcA        (aluSrcAD),
+        .aluSrcB        (aluSrcBD),
         .regSrc         (regSrcD),
         .memWrite       (memWriteD),
         .memRead        (memReadD),
         .branch         (branchD),
         .jump           (jumpD),
-        .branchControl  (branchControlD)
+        .branchControl  (branchControlD),
+        .spSrc          (spSrcD),
+        .spWrite        (spWriteD),
+        .stackSrc       (stackSrcD),
+        .stackRead      (stackReadD),
+        .stackWrite     (stackWriteD),
+        .jrjalr         (jrjalrD),
+        .linkWrite      (linkWriteD),
+        .popWrite       (popWriteD)
     );
-
-   
-    wire [7:0] readData1D;
-    wire [7:0] readData2D;
-
-// write feedback
-    wire [7:0] writeDataW;
-    wire       regWriteW;
-    wire [2:0] writeRegW;
-
-    register_file regfile (
+    
+    //link register
+    link_register lr (
+        .clk(clk),
+        .reset(reset),
+        .linkEnable(writeLR),
+        .newLR(newLR),
+        .readLR(readLRD)
+    );
+    
+    //assign linkEnableD = linkWriteD && ~is_branchE && ~jrjalrE;
+    //assign newLR = lrSrcD ? readStackW : pcPlus1D;
+    assign linkWritePC = linkWriteD && ~is_branchE && ~jrjalrE;
+    
+    assign newLR = (linkWriteD == 1'b1 && popWriteNewNewW == 1'b0)? pcPlus1D:
+                   (linkWriteD == 1'b0 && popWriteNewNewW == 1'b1)? readStackW:
+                   (linkWriteD == 1'b1 && popWriteNewNewW == 1'b1)? pcPlus1D: 16'd0;
+                   
+    assign writeLR = linkWritePC || popWriteNewNewW;
+                   
+    
+    register_file regfile ( 
         .clk       (clk),
         .regWrite  (regWriteW),
         .reset     (reset),
@@ -104,36 +237,23 @@ module cpu (
         .readData2 (readData2D)
     );
     
-    // EX/MEM
-    wire [7:0]  operandBM;
-    wire [2:0]  writeRegM;
-    wire [7:0]  aluResultM;
-    wire        regWriteM; 
-    wire [7:0]  imm8M;
-    wire [1:0]  regSrcM;
-    wire        memWriteM;
-    wire        memReadM;
-
- //ID/ EX
-    wire [15:0] pcPlus1E;
-    wire [7:0]  readData1E;
-    wire [7:0]  readData2E;
-    wire [2:0]  readReg1E;
-    wire [2:0]  readReg2E;
-    wire [2:0]  writeRegE;
-    wire        regWriteE;
-    wire [3:0]  aluControlE;
-    wire [7:0]  imm8E;
-    wire [15:0] imm16E;
-    wire        aluSrcE;
-    wire [1:0]  regSrcE;
-    wire        memWriteE;
-    wire        memReadE;
-    wire [1:0]  branchControlE;
-    wire        branchE;
-    wire        jumpE;
-    wire        flushIDEX;
-
+        
+    assign readReg1D = instructionD [11:9];
+    assign readReg2D = instructionD [8:6];
+    assign writeRegD = instructionD [5:3];
+    
+    //stack pointer 
+    stack_pointer sp (
+        .clk(clk),
+        .reset(reset),
+        .spWrite(spWriteE),
+        .writeSP(writeSP),
+        .readSP(spD)
+    );
+    
+    assign lrForwardE = forwardLRE ? readStackW : readLRE;
+    assign stackDataE = spSrcE ? {8'b0, operandAE} : lrForwardE;
+    
     ID_EX id_ex (
         .clk            (clk),
         .reset          (reset),
@@ -148,13 +268,22 @@ module cpu (
         .aluControlD    (aluControlD),
         .imm8D          (imm8D),
         .imm16D         (imm16D),
-        .aluSrcD        (aluSrcD),
+        .aluSrcAD       (aluSrcAD),
+        .aluSrcBD       (aluSrcBD),
         .regSrcD        (regSrcD),
         .memWriteD      (memWriteD),
         .memReadD       (memReadD),
         .branchControlD (branchControlD),
         .branchD        (branchD),
-        .jumpD          (jumpD),
+        .stackReadD     (stackReadD),
+        .stackWriteD    (stackWriteD),
+        .stackSrcD      (stackSrcD),
+        .spD            (spD),
+        .jrjalrD        (jrjalrD),
+        .readLRD        (readLRD),
+        .spWriteD       (spWriteD),
+        .spSrcD         (spSrcD),
+        .popWriteD      (popWriteD),
         .pcPlus1E       (pcPlus1E),
         .readData1E     (readData1E),
         .readData2E     (readData2E),
@@ -165,23 +294,23 @@ module cpu (
         .aluControlE    (aluControlE),
         .imm8E          (imm8E),
         .imm16E         (imm16E),
-        .aluSrcE        (aluSrcE),
+        .aluSrcAE       (aluSrcAE),
+        .aluSrcBE       (aluSrcBE),
         .regSrcE        (regSrcE),
         .memWriteE      (memWriteE),
         .memReadE       (memReadE),
         .branchControlE (branchControlE),
         .branchE        (branchE),
-        .jumpE          (jumpE)
+        .stackReadE     (stackReadE),
+        .stackWriteE    (stackWriteE),
+        .stackSrcE      (stackSrcE),
+        .spE            (spE),
+        .jrjalrE        (jrjalrE),
+        .readLRE        (readLRE),
+        .spWriteE       (spWriteE),
+        .spSrcE         (spSrcE),
+        .popWriteE      (popWriteE)
     );
-
-    // alu
-    wire [7:0] operandAE;
-    wire [7:0] operandBE; //the wire that goes into the aluInputB MUX 
-    wire [7:0] aluInputB;
-    wire [7:0] aluResultE;
-    wire       zero, carry, overflow, negative, sign, parity;
-    wire [1:0] forwardAE;
-    wire [1:0] forwardBE;
     
     assign operandAE = (forwardAE == 2'b00) ? readData1E: 
                        (forwardAE == 2'b01) ? aluResultM:
@@ -190,11 +319,16 @@ module cpu (
     assign operandBE = (forwardBE == 2'b00) ? readData2E:
                        (forwardBE == 2'b01) ? aluResultM:
                        (forwardBE == 2'b10) ? writeDataW: imm8M;
-                                           
-    assign aluInputB = aluSrcE ? imm8E : operandBE;
-
+            
+    assign spForwardE = forwardSPE ? aluResultM : spE;  
+                 
+    assign aluInputA = aluSrcAE ? spForwardE : operandAE;                                       
+    assign aluInputB = (aluSrcBE == 2'b00) ? operandBE:
+                       (aluSrcBE == 2'b01) ? imm8E:
+                       (aluSrcBE == 2'b10) ? 8'd1:8'b11111111;
+                       
     alu alu_inst (
-        .a        (operandAE),
+        .a        (aluInputA),
         .b        (aluInputB),
         .alu_ctrl (aluControlE),
         .result   (aluResultE),
@@ -205,33 +339,6 @@ module cpu (
         .sign     (sign),
         .parity   (parity)
     );
-    
-    //hazard unit 
-    
-    hazard_unit hu_inst (
-        .readReg1E (readReg1E),
-        .readReg2E (readReg2E),
-        .writeRegM (writeRegM),
-        .writeRegW (writeRegW),
-        .regWriteM (regWriteM),
-        .regWriteW (regWriteW),
-        .regSrcM   (regSrcM),
-        .is_branchE (is_branchE),
-        .instructionD (instructionD),
-        .memReadE (memReadE),
-        .writeRegE (writeRegE),
-        .regWriteE (regWriteE),
-        .forwardAE (forwardAE),
-        .forwardBE (forwardBE),
-        .stall (stall),
-        .flushIFID (flushIFID),
-        .flushIDEX (flushIDEX)
-    );
-
-  //branch
-    wire eq;
-    wire lt;
-    wire branch_type;
 
     comparator comp (
         .readData1 (operandAE),
@@ -246,13 +353,21 @@ module cpu (
                          (branchControlE == 2'b10) ? lt  : ~lt;
 
     assign is_branchE = branch_type & branchE;
-    assign pcSrc = is_branchE | jumpD;
+    assign pcSrc = is_branchE || jumpD || jrjalrE;
     
-    assign target_addressE = is_branchE ? (pcPlus1E + imm16E) : (pcPlus1D + imm16D); //saves one cycle during jumps
+    assign target_addressE = (jrjalrE   ? lrForwardE  :
+                             is_branchE ? pcPlus1E : pcPlus1D)
+                             + ((jrjalrE || is_branchE) ? imm16E : imm16D); //saves one flush during jal and jump
 
     assign pcNext = (pcSrc) ? target_addressE : pcPlus1;
-
-
+    
+    //address for stack, updated for PUSH (1), old for POP (0)
+    assign stackAddrE = stackSrcE ? aluResultE : spForwardE;
+    
+    assign writeSP = aluResultE; //can just put aluResultE in sp instantiation  
+    
+    assign popWriteNewE = popWriteE && ~isJAL;
+    
     EX_MEM ex_mem (
         .clk        (clk),
         .reset      (reset),
@@ -264,6 +379,12 @@ module cpu (
         .regSrcE    (regSrcE),
         .memWriteE  (memWriteE),
         .memReadE   (memReadE),
+        .stackReadE (stackReadE),
+        .stackWriteE(stackWriteE),
+        .stackDataE (stackDataE),
+        .stackAddrE (stackAddrE),
+        .spWriteE   (spWriteE),
+        .popWriteNewE (popWriteNewE),
         .operandBM  (operandBM),
         .writeRegM  (writeRegM),
         .aluResultM (aluResultM),
@@ -271,12 +392,14 @@ module cpu (
         .imm8M      (imm8M),
         .regSrcM    (regSrcM),
         .memWriteM  (memWriteM),
-        .memReadM   (memReadM)
+        .memReadM   (memReadM),
+        .stackReadM (stackReadM),
+        .stackWriteM(stackWriteM),
+        .stackDataM (stackDataM),
+        .stackAddrM (stackAddrM),
+        .spWriteM   (spWriteM),
+        .popWriteNewM (popWriteNewM)
     );
-
-    // MEM
-
-    wire [7:0] readMemM;
 
     ram data_memory (
         .clk       (clk),
@@ -287,12 +410,19 @@ module cpu (
         .writeMem  (operandBM),
         .readMem   (readMemM)
     );
-
-    // MEM/WB 
-    wire [7:0]  aluResultW;
-    wire [7:0]  readMemW;
-    wire [7:0]  imm8W;
-    wire [1:0]  regSrcW;
+    
+    //stack
+    stack_memory stack (
+        .clk(clk),
+        .reset(reset),
+        .stackWrite(stackWriteM),
+        .stackRead(stackReadM),
+        .address(stackAddrM),
+        .writeStack(stackDataM),
+        .readStack(readStackM)
+    );
+    
+    assign popWriteNewNewM = popWriteNewM && ~isJAL;
 
     MEM_WB mem_wb (
         .clk        (clk),
@@ -303,18 +433,53 @@ module cpu (
         .regWriteM  (regWriteM),
         .imm8M      (imm8M),
         .regSrcM    (regSrcM),
+        .readStackM (readStackM),
+        .popWriteNewNewM (popWriteNewNewM),
         .writeRegW  (writeRegW),
         .aluResultW (aluResultW),
         .readMemW   (readMemW),
         .regWriteW  (regWriteW),
         .imm8W      (imm8W),
-        .regSrcW    (regSrcW)
+        .regSrcW    (regSrcW),
+        .readStackW (readStackW),
+        .popWriteNewNewW (popWriteNewNewW)
     );
-
 
     // WB
     assign writeDataW = (regSrcW == 2'b00) ? aluResultW :
                         (regSrcW == 2'b01) ? imm8W      :
-                        (regSrcW == 2'b10) ? readMemW   : 8'd0;
-
+                        (regSrcW == 2'b10) ? readMemW   : readStackW[7:0]; //most significant bits discared for readStackW
+    
+    //hazard unit 
+    hazard_unit hu_inst (
+        .readReg1E (readReg1E),
+        .readReg2E (readReg2E),
+        .writeRegM (writeRegM),
+        .writeRegW (writeRegW),
+        .regWriteM (regWriteM),
+        .regWriteW (regWriteW),
+        .regSrcM   (regSrcM),
+        .is_branchE (is_branchE),
+        .instructionD (instructionD),
+        .memReadE (memReadE),
+        .writeRegE (writeRegE),
+        .regWriteE (regWriteE),
+        .linkWriteD(linkWriteD),
+        .jrjalrD(jrjalrD),
+        .jrjalrE(jrjalrE),
+        .spWriteE(spWriteE),
+        .spWriteM(spWriteM),
+        .popWriteE(popWriteE),
+        .popWriteNewNewW(popWriteNewNewW),
+        .stackWriteE(stackWriteE),
+        .stackReadE(stackReadE),
+        .forwardAE (forwardAE),
+        .forwardBE (forwardBE),
+        .forwardSPE(forwardSPE),
+        .forwardLRE(forwardLRE),
+        .isJAL(isJAL),
+        .stall (stall),
+        .flushIFID (flushIFID),
+        .flushIDEX (flushIDEX)
+    );
 endmodule
