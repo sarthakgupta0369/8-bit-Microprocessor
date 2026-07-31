@@ -3,6 +3,7 @@
 module EX_MEM(
     input              clk,
     input              reset,
+    input              clr,
     
     //data
     input wire  [7:0]  operandBE,
@@ -43,7 +44,7 @@ module EX_MEM(
 );
 
     always @(posedge clk) begin
-        if (~reset) begin
+        if (~(reset || clr)) begin
             operandBM    <= operandBE;
             writeRegM    <= writeRegE;
             aluResultM   <= aluResultE;
