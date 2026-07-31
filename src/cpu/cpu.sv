@@ -104,6 +104,7 @@ module cpu (
     wire [7:0] aluInputB;
     wire [7:0] aluResultE;
     wire       zero, carry, overflow, negative, sign, parity;
+    wire       mul_busy;
     wire [1:0] forwardAE;
     wire [1:0] forwardBE;
 
@@ -124,6 +125,8 @@ module cpu (
     
     wire        popWriteNewM;
     wire        popWriteNewNewM;
+    
+    wire        stall_mul;
     
     // MEM
     wire [7:0] readMemM;
@@ -158,7 +161,7 @@ module cpu (
     ProgramCounter pc_inst (
         .clk      (clk),
         .rst      (reset),
-        .pc_write (~stall),
+        .pc_write (~(stall||stall_mul)),
         .pc_next  (pcNext),
         .pc       (pcCurrent)
     );
@@ -174,7 +177,7 @@ module cpu (
         .clk          (clk),
         .reset        (reset),
         .clr          (flushIFID),
-        .en           (~stall),
+        .en           (~(stall||stall_mul)),
         .pcPlus1I     (pcPlus1),
         .instructionI (instructionF),
         .pcPlus1D     (pcPlus1D),
@@ -258,6 +261,7 @@ module cpu (
         .clk            (clk),
         .reset          (reset),
         .clr            (flushIDEX),
+        .en             (~stall_mul),
         .pcPlus1D       (pcPlus1D),
         .readData1D     (readData1D),
         .readData2D     (readData2D),
@@ -328,6 +332,8 @@ module cpu (
                        (aluSrcBE == 2'b10) ? 8'd1:8'b11111111;
                        
     alu alu_inst (
+        .clk       (clk),
+        .rst_n     (~reset),
         .a        (aluInputA),
         .b        (aluInputB),
         .alu_ctrl (aluControlE),
@@ -337,7 +343,8 @@ module cpu (
         .overflow (overflow),
         .negative (negative),
         .sign     (sign),
-        .parity   (parity)
+        .parity   (parity),
+        .mul_busy  (mul_busy)
     );
 
     comparator comp (
@@ -371,6 +378,7 @@ module cpu (
     EX_MEM ex_mem (
         .clk        (clk),
         .reset      (reset),
+        .clr        (stall_mul),
         .operandBE  (operandBE),
         .writeRegE  (writeRegE),
         .aluResultE (aluResultE),
@@ -473,12 +481,14 @@ module cpu (
         .popWriteNewNewW(popWriteNewNewW),
         .stackWriteE(stackWriteE),
         .stackReadE(stackReadE),
+        .mul_busy(mul_busy),
         .forwardAE (forwardAE),
         .forwardBE (forwardBE),
         .forwardSPE(forwardSPE),
         .forwardLRE(forwardLRE),
         .isJAL(isJAL),
         .stall (stall),
+        .stall_mul(stall_mul),
         .flushIFID (flushIFID),
         .flushIDEX (flushIDEX)
     );
