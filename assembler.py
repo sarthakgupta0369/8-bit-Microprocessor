@@ -8,6 +8,7 @@ opcode_map = {
     "NOT"    : "0000",
     "ADDU"   : "0000",
     "SUBU"   : "0000",
+    "MUL"    : "0000",
     "SLL"    : "0001",
     "SRL"    : "0001",
     "SRA"    : "0001",
@@ -40,6 +41,7 @@ funct_codes = {
     "NOT"    : "100",
     "ADDU"   : "101",
     "SUBU"   : "110",
+    "MUL"    : "111",
     "SLL"    : "000",
     "SRL"    : "001",
     "SRA"    : "010",
@@ -63,6 +65,7 @@ types = {
     "NOT"    : "rtype",
     "ADDU"   : "rtype",
     "SUBU"   : "rtype",
+    "MUL"    : "rtype",
     "SLL"    : "rtype",
     "SRL"    : "rtype",
     "SRA"    : "rtype",
@@ -176,7 +179,7 @@ def assemble(lines):
 
                 machine_instr = op + rs1 + rs2 + off[0:3] + off[3:6]
             elif types[instr] == "jtype":
-                if instr == "NOP":
+                if instr == "NOP": #NOP is not jtype but i've left it in here
                     machine_instr = op + "0" * 12
                 elif instr == "JR": #JR
                     machine_instr = op + "0"*10 + funct_codes[instr]
