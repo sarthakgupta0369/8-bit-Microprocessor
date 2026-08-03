@@ -1,3 +1,4 @@
+`timescale 1ns / 1ps
 
 module alu #(
     parameter WIDTH = 8
@@ -8,15 +9,13 @@ module alu #(
     input  logic [WIDTH-1:0] b,
     input  logic [3:0]       alu_ctrl,
     output logic [WIDTH-1:0] result,
-    output logic             zero,
-    output logic             carry,
-    output logic             overflow,
-    output logic             negative,
-    output logic             sign,
-    output logic             parity,
-    output logic             mul_busy
+    output logic              mul_busy,
+    output logic              overflow_pos,   // signed, crossed above +127
+    output logic              overflow_neg,   // signed, crossed below -128
+    output logic              overflow_u,     // unsigned, crossed above 255
+    output logic              overflow_0      // unsigned, crossed below 0
 );
-    logic [1:0]       mul_stage;
+
     logic is_add, is_sub, is_addu, is_subu;
     logic is_and, is_xor, is_not;
     logic is_sll, is_srl, is_sra, is_rol, is_ror;
@@ -29,7 +28,7 @@ module alu #(
     assign is_not   = (alu_ctrl == 4'b0100);
     assign is_addu  = (alu_ctrl == 4'b0101);
     assign is_subu  = (alu_ctrl == 4'b0110);
-    assign is_mul   = rst_n && (alu_ctrl == 4'b0111);   // rst_n-gated, no X propagation
+    assign is_mul   = rst_n && (alu_ctrl == 4'b0111);  
 
     assign is_sll   = (alu_ctrl == 4'b1000);
     assign is_srl   = (alu_ctrl == 4'b1001);
@@ -42,19 +41,7 @@ module alu #(
 
     logic [7:0] pp0_r, pp1_r, pp2_r, pp3_r;
     logic [7:0] s1_r,  s2_r;
-    logic [1:0] mul_stage_reg;    // 0,1,2 = captures completed (only 3 real states now)
-    logic [1:0] mul_stage_disp;
-
-    always_comb begin
-        if (!is_mul)
-            mul_stage_disp = 2'd0;
-        else if (mul_stage_reg == 2'd2)
-            mul_stage_disp = 2'd3;      // final stage: product valid THIS cycle
-        else
-            mul_stage_disp = mul_stage_reg + 2'd1;
-    end
-
-    assign mul_stage = mul_stage_disp;
+    logic [1:0] mul_stage_reg;    // 0,1,2 = captures completed
 
     assign mul_busy = is_mul && (mul_stage_reg != 2'd2);
 
@@ -103,7 +90,7 @@ module alu #(
             cla2_cin = 1'b0;
         end else if (is_mul && (mul_stage_reg == 2'd2)) begin
             cla2_a   = s1_r;
-            cla2_b   = s2_r;   
+            cla2_b   = s2_r;
             cla2_cin = 1'b0;
         end else begin
             cla2_a   = 8'd0;
@@ -164,13 +151,13 @@ module alu #(
             result_next = 8'd0;
         end else begin
             case (alu_ctrl)
-                4'b0000: result_next = cla1_sum;
-                4'b0001: result_next = cla1_sum;
-                4'b0010: result_next = and_result;
-                4'b0011: result_next = xor_result;
-                4'b0100: result_next = not_result;
-                4'b0101: result_next = cla1_sum;
-                4'b0110: result_next = cla1_sum;
+                4'b0000: result_next = cla1_sum;   // ADD
+                4'b0001: result_next = cla1_sum;   // SUB
+                4'b0010: result_next = and_result; // AND
+                4'b0011: result_next = xor_result; // XOR
+                4'b0100: result_next = not_result; // NOT
+                4'b0101: result_next = cla1_sum;   // ADDU
+                4'b0110: result_next = cla1_sum;   // SUBU
                 4'b1000,
                 4'b1001,
                 4'b1010,
@@ -180,80 +167,59 @@ module alu #(
             endcase
         end
     end
+    
+    wire ovf_add_pos = is_add  && (~a[WIDTH-1] & ~b[WIDTH-1] &  cla1_sum[WIDTH-1]);
+    wire ovf_add_neg = is_add  && ( a[WIDTH-1] &  b[WIDTH-1] & ~cla1_sum[WIDTH-1]);
+    wire ovf_sub_pos = is_sub  && (~a[WIDTH-1] &  b[WIDTH-1] &  cla1_sum[WIDTH-1]);
+    wire ovf_sub_neg = is_sub  && ( a[WIDTH-1] & ~b[WIDTH-1] & ~cla1_sum[WIDTH-1]);
 
-    logic flag_z_next, flag_c_next, flag_v_next, flag_n_next, flag_s_next, flag_p_next;
+    assign overflow_pos = (ovf_add_pos | ovf_sub_pos);    // signed result > +127
+    assign overflow_neg = (ovf_add_neg | ovf_sub_neg);    // signed result < -128
+    assign overflow_u   = (is_addu && cla1_cout);          // unsigned result > 255
+    assign overflow_0   = (is_subu && ~cla1_cout);         // unsigned result < 0 (borrow)
 
-    assign flag_z_next = ~|result_next;
-    assign flag_n_next = result_next[WIDTH-1];
-    assign flag_p_next = ~^result_next;
+    logic [7:0] result_clamped;
 
     always_comb begin
-        if (is_add) begin
-            flag_c_next = cla1_cout;
-            flag_v_next = (~a[WIDTH-1] & ~b[WIDTH-1] & cla1_sum[WIDTH-1]) |
-                          ( a[WIDTH-1] &  b[WIDTH-1] & ~cla1_sum[WIDTH-1]);
-        end else if (is_sub) begin
-            flag_c_next = ~cla1_cout;
-            flag_v_next = (~a[WIDTH-1] &  b[WIDTH-1] & cla1_sum[WIDTH-1]) |
-                          ( a[WIDTH-1] & ~b[WIDTH-1] & ~cla1_sum[WIDTH-1]);
-        end else if (is_addu) begin
-            flag_c_next = cla1_cout;
-            flag_v_next = 1'b0;
-        end else if (is_subu) begin
-            flag_c_next = ~cla1_cout;
-            flag_v_next = 1'b0;
-        end else begin
-            flag_c_next = 1'b0;
-            flag_v_next = 1'b0;
-        end
-        flag_s_next = flag_v_next ^ flag_n_next;
+        if (overflow_pos)      result_clamped = 8'd127;  // 0111_1111
+        else if (overflow_neg) result_clamped = 8'h80;    // 1000_0000 (-128)
+        else if (overflow_u)   result_clamped = 8'd255;   // 1111_1111
+        else if (overflow_0)    result_clamped = 8'd0;
+        else                     result_clamped = result_next;
     end
 
     always_ff @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
-        mul_stage_reg <= 2'd0;
-        pp0_r <= 8'd0; pp1_r <= 8'd0; pp2_r <= 8'd0; pp3_r <= 8'd0;
-        s1_r  <= 8'd0; s2_r  <= 8'd0;
-    end else begin
-        if (is_mul) begin
-            if (mul_stage_reg == 2'd2)
-                mul_stage_reg <= 2'd0; 
-            else
-                mul_stage_reg <= mul_stage_reg + 1'b1;
-        end else begin
+        if (!rst_n) begin
             mul_stage_reg <= 2'd0;
-        end
+            pp0_r <= 8'd0; pp1_r <= 8'd0; pp2_r <= 8'd0; pp3_r <= 8'd0;
+            s1_r  <= 8'd0; s2_r  <= 8'd0;
+        end else begin
+            if (is_mul) begin
+                if (mul_stage_reg == 2'd2)
+                    mul_stage_reg <= 2'd0;
+                else
+                    mul_stage_reg <= mul_stage_reg + 1'b1;
+            end else begin
+                mul_stage_reg <= 2'd0;
+            end
 
-        if (is_mul && (mul_stage_reg == 2'd0)) begin
-            pp0_r <= pp0_sh;
-            pp1_r <= pp1_sh;
-            pp2_r <= pp2_sh;
-            pp3_r <= pp3_sh;
-        end else if (is_mul && (mul_stage_reg == 2'd1)) begin
-            s1_r <= cla1_sum;
-            s2_r <= cla2_sum;
+            if (is_mul && (mul_stage_reg == 2'd0)) begin
+                pp0_r <= pp0_sh;
+                pp1_r <= pp1_sh;
+                pp2_r <= pp2_sh;
+                pp3_r <= pp3_sh;
+            end else if (is_mul && (mul_stage_reg == 2'd1)) begin
+                s1_r <= cla1_sum;
+                s2_r <= cla2_sum;
+            end
         end
     end
-end
 
     always_comb begin
-        if (is_mul) begin
-            result   = (mul_stage_reg == 2'd2) ? cla2_sum : 8'd0;
-            zero     = ~|result;
-            negative = result[WIDTH-1];
-            parity   = ~^result;
-            carry    = 1'b0;
-            overflow = 1'b0;
-            sign     = 1'b0;
-        end else begin
-            result   = result_next;
-            zero     = flag_z_next;
-            carry    = flag_c_next;
-            overflow = flag_v_next;
-            negative = flag_n_next;
-            sign     = flag_s_next;
-            parity   = flag_p_next;
-        end
+        if (is_mul)
+            result = (mul_stage_reg == 2'd2) ? cla2_sum : 8'd0;
+        else
+            result = result_clamped;
     end
 
 endmodule
