@@ -34,10 +34,12 @@
 
 ---
 
-# Single-Cycle
-![Single_Cycle_Datapath](Single_Cylce_Datapath.png)
+## Pipelined
+![Pipelined_Datapath](Pipelined_Datapath.png)
 
-In a single-cycle processor, each instruction completes in exactly one clock cycle. This keeps the datapath simple and easy to follow.
+The processor is a classic 5-stage pipeline – IF, ID, EX, MEM, WB – built around an 8-bit
+datapath (register file, ALU, and data memory are all 8 bits wide) driven by a 16-bit instruction
+word and a 16-bit program counter.   
 
 Components include:
 - ALU
@@ -47,4 +49,6 @@ Components include:
 - Instruction Memory
 - Data Memory
 - Register File
+- Pipeline Registers
+- Hazard Unit
 
