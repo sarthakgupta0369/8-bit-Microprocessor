@@ -30,7 +30,8 @@ opcode_map = {
     "PUSHR"    : "1011",
     "POPLR"    : "1100",
     "POPR"     : "1100",
-    "NOP"    : "1111"
+    "NOP"    : "1111",
+    "TRAP"   : "1101"
 }
 
 funct_codes = {
@@ -87,7 +88,8 @@ types = {
     "PUSHR"  : "stype", 
     "POPLR"  : "stype", 
     "POPR"   : "stype",
-    "NOP"    : "jtype"
+    "NOP"    : "jtype",
+    "TRAP"   : "etype"
 
 }
 
@@ -110,12 +112,20 @@ def b(val, bits):
         val = (1 << bits) + val
     return f"{val:0{bits}b}"[-bits:]
 
-def labelling(lines):
+def first_parse(lines):
     for line in lines:
         line = line.split("#")[0].strip()
         if not line:
             continue
         cleaned.append(line)
+    trap_label_invalid = "TRAP:"
+    for line in cleaned:
+        trap_search = re.search("TRAP", line)
+        trap_invalid_search = re.search(trap_label_invalid, line)
+        if trap_search and not trap_invalid_search:
+            cleaned.append("TRAP:")
+            cleaned.append("JMP TRAP")
+            break
     lines = cleaned
     # print(lines) #debug
     t = 0
@@ -218,6 +228,10 @@ def assemble(lines):
                         off = b(field[2], 8)
 
                     machine_instr = op + off[0:6] + rd + off[6:8] + funct_codes[instr]
+            elif types[instr] == "etype":
+                if instr == "TRAP":
+                    off = b((label_dict["TRAP"]- address -1), 12)
+                    machine_instr = op + off
             
             instructions.append(machine_instr)
         else:
@@ -227,7 +241,7 @@ if __name__ == "__main__":
     with open("assemblycode.asm", "r") as f:
         lines = f.readlines()
     # print(lines) #debug
-    labelling(lines)
+    first_parse(lines)
     assemble(cleaned)
     # print(instructions) #debug
     with open("machinecode.mem", "w") as f:
