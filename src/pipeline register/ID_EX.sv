@@ -36,6 +36,8 @@ module ID_EX (
     input wire         spWriteD,
     input wire         spSrcD,
     input wire         popWriteD,
+    input wire [15:0]  pcCurrentD,
+    input wire         usesAluD,
     
     //data
     output reg  [15:0] pcPlus1E,
@@ -65,7 +67,9 @@ module ID_EX (
     output reg  [15:0] readLRE,
     output reg         spWriteE,
     output reg         spSrcE,
-    output reg         popWriteE
+    output reg         popWriteE,
+    output reg  [15:0] pcCurrentE,
+    output reg         usesAluE
 );
 
     always @(posedge clk) begin
@@ -96,6 +100,8 @@ module ID_EX (
             spWriteE        <= 1'b0;
             spSrcE          <= 1'b0;
             popWriteE       <= 1'b0;
+            pcCurrentE      <= 1'b0;
+            usesAluE        <= 1'b0;
         end 
         else if (~en) begin
             pcPlus1E        <= pcPlus1E;
@@ -124,6 +130,8 @@ module ID_EX (
             spWriteE        <= spWriteE;
             spSrcE          <= spSrcE;
             popWriteE       <= popWriteE;
+            pcCurrentE      <= pcCurrentE;
+            usesAluE        <= usesAluE;
         end
         else begin
             pcPlus1E        <= pcPlus1D;
@@ -152,6 +160,8 @@ module ID_EX (
             spWriteE        <= spWriteD;
             spSrcE          <= spSrcD;
             popWriteE       <= popWriteD;
+            pcCurrentE      <= pcCurrentD;
+            usesAluE        <= usesAluD;
         end
     end
 endmodule
