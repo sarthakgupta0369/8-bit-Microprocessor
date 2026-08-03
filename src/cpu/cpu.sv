@@ -2,7 +2,9 @@
 
 module cpu (
     input  wire clk,
-    input  wire reset
+    input  wire reset,
+    input  wire releaseTrap
+    
 );//IF
     wire [15:0] pcCurrent;
     wire [15:0] pcPlus1;
@@ -35,6 +37,8 @@ module cpu (
     wire [1:0]  branchControlD;
     wire        branchD;
     wire        jumpD;
+    wire        illegalD;
+    wire       usesAluD;
     
     wire [7:0] readData1D;
     wire [7:0] readData2D;
@@ -48,6 +52,8 @@ module cpu (
     wire        jrjalrD;
     
     wire        popWriteD;
+    
+    wire [15:0] pcCurrentD;
     
     //stack pointer
     wire        spWriteD;
@@ -97,16 +103,21 @@ module cpu (
     wire        popWriteE;
     wire        popWriteNewE;
     
+    wire [15:0] pcCurrentE;
+    
     // alu
     wire [7:0] operandAE;
     wire [7:0] operandBE; //the wire that goes into the aluInputB MUX 
     wire [7:0] aluInputA;
     wire [7:0] aluInputB;
     wire [7:0] aluResultE;
-    wire       zero, carry, overflow, negative, sign, parity;
+    
+    wire       usesAluE;
+    //wire       zero, carry, overflow, negative, sign, parity;
     wire       mul_busy;
     wire [1:0] forwardAE;
     wire [1:0] forwardBE;
+    wire       overflow_pos, overflow_neg, overflow_u, overflow_0;
 
     //branch
     wire eq;
@@ -150,13 +161,20 @@ module cpu (
     
     wire        popWriteNewNewW;
     
-// write feedback
+    // write feedback
     wire [7:0] writeDataW;
     wire       regWriteW;
     wire [2:0] writeRegW;
     
     //hazard unit
     wire       isJAL;
+    
+    //execption handling
+    wire        trapD;
+    wire        exc_overflow;
+    wire [1:0]  cause;
+    wire [15:0] epc;
+    
 
     ProgramCounter pc_inst (
         .clk      (clk),
@@ -178,8 +196,10 @@ module cpu (
         .reset        (reset),
         .clr          (flushIFID),
         .en           (~(stall||stall_mul)),
+        .pcCurrent    (pcCurrent),
         .pcPlus1I     (pcPlus1),
         .instructionI (instructionF),
+        .pcCurrentD   (pcCurrentD),
         .pcPlus1D     (pcPlus1D),
         .instructionD (instructionD)
     );
@@ -205,7 +225,10 @@ module cpu (
         .stackWrite     (stackWriteD),
         .jrjalr         (jrjalrD),
         .linkWrite      (linkWriteD),
-        .popWrite       (popWriteD)
+        .popWrite       (popWriteD),
+        .trap           (trapD),
+        .illegal        (illegalD),
+        .usesAlu        (usesAluD)
     );
     
     //link register
@@ -288,6 +311,8 @@ module cpu (
         .spWriteD       (spWriteD),
         .spSrcD         (spSrcD),
         .popWriteD      (popWriteD),
+        .pcCurrentD     (pcCurrentD),
+        .usesAluD       (usesAluD),
         .pcPlus1E       (pcPlus1E),
         .readData1E     (readData1E),
         .readData2E     (readData2E),
@@ -313,7 +338,9 @@ module cpu (
         .readLRE        (readLRE),
         .spWriteE       (spWriteE),
         .spSrcE         (spSrcE),
-        .popWriteE      (popWriteE)
+        .popWriteE      (popWriteE),
+        .pcCurrentE     (pcCurrentE),
+        .usesAluE       (usesAluE)
     );
     
     assign operandAE = (forwardAE == 2'b00) ? readData1E: 
@@ -330,21 +357,45 @@ module cpu (
     assign aluInputB = (aluSrcBE == 2'b00) ? operandBE:
                        (aluSrcBE == 2'b01) ? imm8E:
                        (aluSrcBE == 2'b10) ? 8'd1:8'b11111111;
-                       
+    
     alu alu_inst (
-        .clk       (clk),
-        .rst_n     (~reset),
-        .a        (aluInputA),
-        .b        (aluInputB),
-        .alu_ctrl (aluControlE),
-        .result   (aluResultE),
-        .zero     (zero),
-        .carry    (carry),
-        .overflow (overflow),
-        .negative (negative),
-        .sign     (sign),
-        .parity   (parity),
-        .mul_busy  (mul_busy)
+        .clk          (clk),
+        .rst_n        (~reset),      
+        .a            (aluInputA),
+        .b            (aluInputB),
+        .alu_ctrl     (aluControlE),
+        .result       (aluResultE),
+        .mul_busy     (mul_busy),
+        .overflow_pos (overflow_pos),
+        .overflow_neg (overflow_neg),
+        .overflow_u   (overflow_u),
+        .overflow_0   (overflow_0)
+    );
+    
+    assign exc_overflow = (overflow_pos | overflow_neg | overflow_u | overflow_0) && usesAluE;
+     
+//    assign causeEnable = exc_overflow||trapD;
+    
+    cause_register cause_inst (
+        .clk          (clk),
+        .reset        (reset),
+//        .enable       (causeEnable&&~cause),
+        .exc_overflow (exc_overflow),
+        .trap         (trapD),
+        .illegal      (illegalD),
+        .cause        (cause)
+    );
+
+    epc_register epc_inst (
+        .clk          (clk),
+        .reset        (reset),
+//        .enable       (causeEnable&&~cause),
+        .exc_overflow (exc_overflow),
+        .pcE          (pcCurrentE),
+        .trap         (trapD),
+        .illegal      (illegalD),
+        .pcD          (pcCurrentD),
+        .epc          (epc)
     );
 
     comparator comp (
@@ -360,13 +411,15 @@ module cpu (
                          (branchControlE == 2'b10) ? lt  : ~lt;
 
     assign is_branchE = branch_type & branchE;
-    assign pcSrc = is_branchE || jumpD || jrjalrE;
+    assign pcSrc = is_branchE || jumpD || jrjalrE ||trapD;
     
     assign target_addressE = (jrjalrE   ? lrForwardE  :
                              is_branchE ? pcPlus1E : pcPlus1D)
                              + ((jrjalrE || is_branchE) ? imm16E : imm16D); //saves one flush during jal and jump
 
-    assign pcNext = (pcSrc) ? target_addressE : pcPlus1;
+    assign pcNext = releaseTrap ? (epc + 16'd1) :
+                    pcSrc        ? target_addressE :
+                                    pcPlus1;
     
     //address for stack, updated for PUSH (1), old for POP (0)
     assign stackAddrE = stackSrcE ? aluResultE : spForwardE;
@@ -482,6 +535,8 @@ module cpu (
         .stackWriteE(stackWriteE),
         .stackReadE(stackReadE),
         .mul_busy(mul_busy),
+        .trapD(trapD),
+        .illegalD(illegalD),
         .forwardAE (forwardAE),
         .forwardBE (forwardBE),
         .forwardSPE(forwardSPE),
