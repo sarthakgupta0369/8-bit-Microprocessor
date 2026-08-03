@@ -1,9 +1,5 @@
 # 8-bit-Microprocessor
 
-- For now, Single-Cycle is being treated as the main branch
-- For Multi-Cycle, click [here](https://github.com/sarthakgupta0369/8-bit-Microprocessor/tree/multi_cycle).
-- For Assembler, click [here](https://github.com/sarthakgupta0369/8-bit-Microprocessor/tree/assembler).
-
 ---
 ## Instruction Set Architecture
 
