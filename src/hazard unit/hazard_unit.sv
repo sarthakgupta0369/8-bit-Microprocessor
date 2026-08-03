@@ -9,7 +9,7 @@ module hazard_unit(
     input       regWriteW,
     input [1:0] regSrcM,                //to decide bw aluResultM and imm8M
     
-    input              is_branchE,
+    input              misprediction, //THIS
     input  wire [15:0] instructionD,   // Raw instruction currently in ID
     input  wire        memReadE,       // 1 = instruction in EX is LOAD
     input  wire [2:0]  writeRegE,      // Destination reg [5:3] of instr in EX
@@ -129,8 +129,9 @@ module hazard_unit(
     assign stall_mul = mul_busy;
     
     //flush
-    assign flushIFID = is_branchE || (opcodeD == 4'b1010 && instructionD[1] == 1'b0)||jrjalrE || trapD;
-    assign flushIDEX = is_branchE || stall || jrjalrE; 
+    assign flushIFID = misprediction || (opcodeD == 4'b1010 && instructionD[1] == 1'b0)||jrjalrE || trapD; //THIS
+    assign flushIDEX = misprediction || stall || jrjalrE; //THIS
     
     //signals
      assign isJAL = ((opcodeD == 4'b1010)&&(instructionD[1:0] == 2'b01))? 1'b1 : 1'b0;  
+endmodule
