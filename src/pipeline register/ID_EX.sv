@@ -8,12 +8,15 @@ module ID_EX (
     
     //data
     input wire  [15:0] pcPlus1D,
+    input wire  [15:0] pcCurrentD, //THIS
     input wire  [7:0]  readData1D,
     input wire  [7:0]  readData2D,
     input wire  [2:0]  writeRegD, 
     input wire  [2:0]  readReg1D,
     input wire  [2:0]  readReg2D,
     input wire  [7:0]  spD,
+    input wire         predictionD, //THIS
+    input wire  [15:0] predictedTargetD,//THIS
 
     
     //control signals
@@ -36,17 +39,19 @@ module ID_EX (
     input wire         spWriteD,
     input wire         spSrcD,
     input wire         popWriteD,
-    input wire [15:0]  pcCurrentD,
     input wire         usesAluD,
     
     //data
     output reg  [15:0] pcPlus1E,
+    output reg  [15:0] pcCurrentE, //THIS
     output reg  [7:0]  readData1E,
     output reg  [7:0]  readData2E,
     output reg  [2:0]  writeRegE, 
     output reg  [2:0]  readReg1E,
     output reg  [2:0]  readReg2E,
     output reg  [7:0]  spE,
+    output reg         predictionE,//THIS
+    output reg [15:0]  predictedTargetE,//THIS
     
     //control signals
     output reg         regWriteE,     
@@ -68,7 +73,6 @@ module ID_EX (
     output reg         spWriteE,
     output reg         spSrcE,
     output reg         popWriteE,
-    output reg  [15:0] pcCurrentE,
     output reg         usesAluE
 );
 
@@ -95,6 +99,8 @@ module ID_EX (
             stackWriteE     <= 1'b0;
             stackSrcE       <= 1'b0;
             spE             <= 8'd0;
+            predictionE     <= 1'b0;//THIS
+            predictedTargetE<= predictedTargetD;//THIS
             jrjalrE         <= 1'b0;
             readLRE         <= 16'b0;
             spWriteE        <= 1'b0;
@@ -125,6 +131,8 @@ module ID_EX (
             stackWriteE     <= stackWriteE;
             stackSrcE       <= stackSrcE;
             spE             <= spE;
+            predictionE     <= predictionE;//THIS
+            predictedTargetE<= predictedTargetE;//THIS
             jrjalrE         <= jrjalrE;
             readLRE         <= readLRE;
             spWriteE        <= spWriteE;
@@ -155,6 +163,8 @@ module ID_EX (
             stackWriteE     <= stackWriteD;
             stackSrcE       <= stackSrcD;
             spE             <= spD;
+            predictionE     <= predictionD;//THIS
+            predictedTargetE<= predictedTargetD;//THIS
             jrjalrE         <= jrjalrD;
             readLRE         <= readLRD;
             spWriteE        <= spWriteD;
