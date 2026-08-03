@@ -22,7 +22,10 @@ module control_unit (
     output reg         stackWrite,
     output reg         jrjalr,
     output reg         linkWrite,
-    output reg         popWrite
+    output reg         popWrite,
+    output reg         trap,
+    output reg         illegal,
+    output reg         usesAlu
 );
 
     always @(*) begin
@@ -46,6 +49,9 @@ module control_unit (
         jrjalr = 0;
         linkWrite = 0;
         popWrite = 0;
+        trap = 0;
+        illegal = 0;
+        usesAlu = 0;
 
         case (instruction[15:12])
             
@@ -54,6 +60,7 @@ module control_unit (
                 aluControl = {1'b0, instruction[2:0]};          
                 aluSrcB    = 2'b00;
                 regSrc     = 2'b00;
+                usesAlu    = 1'b1;
             end
 
             // R-TYPE SHIFT
@@ -62,6 +69,7 @@ module control_unit (
                 aluControl = {1'b1, instruction[2:0]};    
                 aluSrcB    = 2'b00;
                 regSrc     = 2'b00;
+                usesAlu    = 1'b1;
             end
 
             //ADDI
@@ -71,15 +79,18 @@ module control_unit (
                 imm8       = {{2{instruction[8]}}, instruction[8:6], instruction[2:0]}; 
                 aluSrcB    = 2'b01;  // Use immediate
                 regSrc     = 2'b00;
+                usesAlu    = 1'b1;
             end
 
             // LI
            
             4'b0011: begin
-                regWrite   = 1;                              
+                regWrite   = 1; 
+                aluControl = 4'b0000;                             
                 imm8       = {instruction[11:6], instruction[2:1]}; 
                 aluSrcB    = 2'b01;  
                 regSrc     = 2'b01;
+                usesAlu    = 1'b0;
             end
             
             //LOAD
@@ -92,6 +103,7 @@ module control_unit (
                 regSrc     = 2'b10;
                 memWrite   = 0;
                 memRead    = 1;
+                usesAlu    = 1'b1;
             end
             
             //STORE
@@ -104,12 +116,14 @@ module control_unit (
                 regSrc     = 2'bxx;
                 memWrite   = 1;
                 memRead    = 0;
+                usesAlu    = 1'b1;
             end
             
             //BEQ
             
             4'b0110: begin
-                regWrite      = 0;                      
+                regWrite      = 0; 
+                aluControl = 4'b0000;                     
                 imm16         = {{10{instruction[5]}}, instruction[5:0]}; 
                 branch        = 1;
                 branchControl = 2'b00;
@@ -118,7 +132,8 @@ module control_unit (
             //BNE
             
             4'b0111: begin
-                regWrite      = 0;                          
+                regWrite      = 0;
+                aluControl = 4'b0000;                          
                 imm16         = {{10{instruction[5]}}, instruction[5:0]}; 
                 branch        = 1;
                 branchControl = 2'b01;
@@ -127,7 +142,8 @@ module control_unit (
             //BLT
             
             4'b1000: begin
-                regWrite      = 0;                           
+                regWrite      = 0;
+                aluControl = 4'b0000;                           
                 imm16         = {{10{instruction[5]}}, instruction[5:0]}; 
                 branch        = 1;
                 branchControl = 2'b10;
@@ -136,7 +152,8 @@ module control_unit (
             //BGE
             
             4'b1001: begin
-                regWrite      = 0;                         
+                regWrite      = 0;  
+                aluControl = 4'b0000;                       
                 imm16         = {{10{instruction[5]}}, instruction[5:0]}; 
                 branch        = 1;
                 branchControl = 2'b11;
@@ -147,6 +164,7 @@ module control_unit (
            4'b1010: begin
                 imm16         = {{6{instruction[11]}}, instruction[11:2]}; 
                 jump          = 1;
+                aluControl = 4'b0000;
                 
                 case (instruction[1:0])
                 
@@ -174,6 +192,7 @@ module control_unit (
             
             //PUSH
             4'b1011: begin
+                aluControl = 4'b0000;
                 imm8 = instruction[8:1];
                 aluSrcA = 1'b1;
                 stackWrite = 1'b1;
@@ -181,6 +200,7 @@ module control_unit (
                 stackSrc = 1'b1;
                 stackRead = 1'b0;
                 aluSrcB = 2'b10;
+                usesAlu    = 1'b1;
                 //if (imm8 == 8'd0 || imm8 == 8'b11111111) begin
                         //aluSrcB = 2'b10;
                     //end
@@ -199,6 +219,7 @@ module control_unit (
             
             //POP
             4'b1100: begin
+                aluControl = 4'b0000;
                 imm8 = {instruction[11:6],instruction[2:1]};
                 aluSrcA = 1'b1;
                 stackWrite = 1'b0;
@@ -206,6 +227,7 @@ module control_unit (
                 stackSrc = 1'b0;
                 spWrite = 1'b1;
                 aluSrcB = 2'b11;
+                usesAlu    = 1'b1;
                 //if (imm8 == 8'd0 || imm8 == 8'd1) begin
                         //aluSrcB = 2'b11;
                     //end
@@ -223,14 +245,26 @@ module control_unit (
                         regSrc = 2'b11;
                     end
                 endcase  
-            end          
-
+            end 
+            
+            //TRAP
+            4'b1101: begin
+                aluControl = 4'b0000;
+                imm16      = {{4{instruction[11]}}, instruction[11:0]};
+                trap       = 1'b1;         
+            end 
+            
             //NOP
-
             4'b1111: begin
-            //all quiet on the frontal lobe
+                aluControl = 4'b0000;
+                //all quiet on the frontal lobe
             end
-
+            
+            //ILLEGAL
+            4'b1110: begin
+                aluControl = 4'b0000;
+                illegal = 1'b1;
+            end
             default: begin
                         regWrite   = 0;
                         aluControl = 4'b0000;
@@ -252,6 +286,9 @@ module control_unit (
                         jrjalr = 0;
                         linkWrite = 0;
                         popWrite = 0;
+                        trap = 0;
+                        illegal = 0;
+                        usesAlu = 0;
             end
         endcase
     end
