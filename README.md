@@ -1,9 +1,4 @@
 # 8-bit-Microprocessor
-
-- For now, Single-Cycle is being treated as the main branch
-- For Multi-Cycle, click [here](https://github.com/sarthakgupta0369/8-bit-Microprocessor/tree/multi_cycle).
-- For Assembler, click [here](https://github.com/sarthakgupta0369/8-bit-Microprocessor/tree/assembler).
-
 ---
 ## Instruction Set Architecture
 
@@ -30,16 +25,21 @@
 | 1000   | BLT      | B    |
 | 1001   | BGE      | B    |
 | 1010   | JMP      | J    |
+| 1010   | JAL      | J    |
+| 1010   | JR       | J    |
+| 1010   | JALR     | J    |
+| 1011   | PUSHLR   | S    |
+| 1011   | PUSHR    | S    |
+| 1100   | POPLR    | S    |
+| 1100   | POPR     | S    |
+| 1101   | TRAP     | E    |
 | 1111   | NOP      | —    |
 
 ---
 
-# Single-Cycle
-![Single_Cycle_Datapath](Single_Cylce_Datapath.png)
-
-In a single-cycle processor, each instruction completes in exactly one clock cycle. This keeps the datapath simple and easy to follow.
-
+# Pipelined
 Components include:
+
 - ALU
 - Comparator
 - Control-Unit
@@ -47,4 +47,7 @@ Components include:
 - Instruction Memory
 - Data Memory
 - Register File
+- Pipeline Registers
+- Hazard Unit
+- Branch Predictor
 
