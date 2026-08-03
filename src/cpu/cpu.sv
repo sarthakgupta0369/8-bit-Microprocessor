@@ -123,6 +123,15 @@ module cpu (
     wire eq;
     wire lt;
     wire branch_type;
+    wire predictionF; //THIS
+    wire [15:0] predictedTargetF;//THIS
+    wire predictionD;//THIS
+    wire [15:0] predictedTargetD;//THIS
+    wire predictionE;//THIS
+    wire [15:0] predictedTargetE;//THIS
+    wire btbHit;//THIS
+    wire misprediction;//THIS
+    wire [15:0] correctedPC;//THIS
 
     // EX/MEM
     wire [7:0]  operandBM;
@@ -198,8 +207,12 @@ module cpu (
         .en           (~(stall||stall_mul)),
         .pcCurrent    (pcCurrent),
         .pcPlus1I     (pcPlus1),
+        .predictionF  (predictionF),//THIS
+        .predictedTargetF(predictedTargetF),//THIS
         .instructionI (instructionF),
         .pcCurrentD   (pcCurrentD),
+        .predictionD  (predictionD),//THIS
+        .predictedTargetD(predictedTargetD),//THIS
         .pcPlus1D     (pcPlus1D),
         .instructionD (instructionD)
     );
@@ -286,6 +299,9 @@ module cpu (
         .clr            (flushIDEX),
         .en             (~stall_mul),
         .pcPlus1D       (pcPlus1D),
+        .pcCurrentD     (pcCurrentD),//THIS
+        .predictionD    (predictionD),//THIS
+        .predictedTargetD(predictedTargetD),//THIS
         .readData1D     (readData1D),
         .readData2D     (readData2D),
         .writeRegD      (writeRegD),
@@ -311,9 +327,11 @@ module cpu (
         .spWriteD       (spWriteD),
         .spSrcD         (spSrcD),
         .popWriteD      (popWriteD),
-        .pcCurrentD     (pcCurrentD),
         .usesAluD       (usesAluD),
         .pcPlus1E       (pcPlus1E),
+        .pcCurrentE     (pcCurrentE),
+        .predictionE    (predictionE),//THIS
+        .predictedTargetE(predictedTargetE),//THIS
         .readData1E     (readData1E),
         .readData2E     (readData2E),
         .writeRegE      (writeRegE),
@@ -339,7 +357,6 @@ module cpu (
         .spWriteE       (spWriteE),
         .spSrcE         (spSrcE),
         .popWriteE      (popWriteE),
-        .pcCurrentE     (pcCurrentE),
         .usesAluE       (usesAluE)
     );
     
@@ -411,15 +428,20 @@ module cpu (
                          (branchControlE == 2'b10) ? lt  : ~lt;
 
     assign is_branchE = branch_type & branchE;
-    assign pcSrc = is_branchE || jumpD || jrjalrE ||trapD;
+    assign misprediction = branchE && ((predictionE != is_branchE) | (predictionE && is_branchE && (predictedTargetE != target_addressE)));//THIS
+    assign pcSrc = jumpD || jrjalrE ||trapD ;
     
     assign target_addressE = (jrjalrE   ? lrForwardE  :
                              is_branchE ? pcPlus1E : pcPlus1D)
                              + ((jrjalrE || is_branchE) ? imm16E : imm16D); //saves one flush during jal and jump
 
+    assign correctedPC = is_branchE ? target_addressE : pcPlus1E;//THIS
+    
     assign pcNext = releaseTrap ? (epc + 16'd1) :
-                    pcSrc        ? target_addressE :
-                                    pcPlus1;
+                    pcSrc        ? target_addressE : //THIS
+                    misprediction              ? correctedPC :       //THIS
+                    (predictionF && btbHit)   ? predictedTargetF :   //THIS
+                    pcPlus1;                                         //THIS
     
     //address for stack, updated for PUSH (1), old for POP (0)
     assign stackAddrE = stackSrcE ? aluResultE : spForwardE;
@@ -427,6 +449,19 @@ module cpu (
     assign writeSP = aluResultE; //can just put aluResultE in sp instantiation  
     
     assign popWriteNewE = popWriteE && ~isJAL;
+    
+    branchPredictor branchpred (    //THIS
+        .clk        (clk),
+        .reset      (reset),
+        .currentPC  (pcCurrent),
+        .prediction (predictionF),
+        .predictedTarget (predictedTargetF),
+        .btbHit          (btbHit),
+        .branch          (branchE),
+        .actualTaken     (is_branchE),
+        .actualTarget    (target_addressE),
+        .pcBranch        (pcCurrentE)
+        );
     
     EX_MEM ex_mem (
         .clk        (clk),
@@ -520,7 +555,6 @@ module cpu (
         .regWriteM (regWriteM),
         .regWriteW (regWriteW),
         .regSrcM   (regSrcM),
-        .is_branchE (is_branchE),
         .instructionD (instructionD),
         .memReadE (memReadE),
         .writeRegE (writeRegE),
