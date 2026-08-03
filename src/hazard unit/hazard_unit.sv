@@ -27,6 +27,9 @@ module hazard_unit(
     
     input wire         mul_busy,
     
+    input wire       trapD,
+    input wire       illegalD,
+    
     output reg [1:0] forwardAE,        //forward signals to contorl the MUXes near alu input
     output reg [1:0] forwardBE,
     output reg       forwardSPE,
@@ -122,13 +125,12 @@ module hazard_unit(
     wire popLRStall  = popWriteE && (jrjalrD||(opcodeD == 4'b1011 && instructionD[0] == 1'b0)); //when POP LR followed by JR or by PUSH LR
     wire popRStall = ((rs1Hazard||rs2Hazard)) && stackReadE && ~popWriteE; //POP R followed by R type
     
-    assign stall = (memReadE && (rs1Hazard || rs2Hazard))|| popLRStall || popRStall;
+    assign stall = (memReadE && (rs1Hazard || rs2Hazard))|| popLRStall || popRStall || illegalD;
     assign stall_mul = mul_busy;
     
     //flush
-    assign flushIFID = is_branchE || (opcodeD == 4'b1010 && instructionD[1] == 1'b0)||jrjalrE;
+    assign flushIFID = is_branchE || (opcodeD == 4'b1010 && instructionD[1] == 1'b0)||jrjalrE || trapD;
     assign flushIDEX = is_branchE || stall || jrjalrE; 
     
     //signals
      assign isJAL = ((opcodeD == 4'b1010)&&(instructionD[1:0] == 2'b01))? 1'b1 : 1'b0;  
-endmodule
