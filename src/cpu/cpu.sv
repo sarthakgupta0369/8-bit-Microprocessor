@@ -562,6 +562,7 @@ module cpu (
         .linkWriteD(linkWriteD),
         .jrjalrD(jrjalrD),
         .jrjalrE(jrjalrE),
+        .misprediction(misprediction),
         .spWriteE(spWriteE),
         .spWriteM(spWriteM),
         .popWriteE(popWriteE),
