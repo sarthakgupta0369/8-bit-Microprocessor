@@ -23,23 +23,23 @@ wire [7:0] indexE;
 wire [7:0] indexF;
 assign indexF = currentPC[7:0];
 
-assign prediction = PHT[indexF][1];
-assign predictedTarget = BTB[indexF];
-assign btbHit = (tagTable[indexF] == currentPC[15:8]);
-
 assign indexE = pcBranch[7:0];
+
 integer i;
-always @(posedge clk) begin
-    if (reset) begin
-        for (i = 0; i < 256; i = i + 1) begin
-            tagTable[i] <= 8'b11111111;
-            PHT[i]      <= 2'b00;
-        end
+
+initial begin
+    for (i = 0; i < 256; i = i + 1) begin
+        PHT[i]        = 2'b00;   
+        BTB[i] = 16'h0000;
+        tagTable[i]   = 8'hFF;   
     end
-    else if (branch) begin
+end
+
+always @(posedge clk) begin
+    if (branch) begin
         if (actualTaken) begin
             if (PHT[indexE] != 2'b11) begin
-                PHT[indexE] <= PHT[indexE] + 1'b1;     
+                PHT[indexE] <= PHT[indexE] + 2'b01;     
             end
                 
             tagTable[indexE]    <= pcBranch[15:8];
@@ -47,10 +47,14 @@ always @(posedge clk) begin
         end 
         else begin
             if (PHT[indexE] != 2'b00) begin
-                PHT[indexE] <= PHT[indexE] - 1'b1;    
+                PHT[indexE] <= PHT[indexE] - 2'b01;    
             end
         end 
     end
 end
+
+assign prediction = PHT[indexF][1];
+assign predictedTarget = BTB[indexF];
+assign btbHit = (tagTable[indexF] == currentPC[15:8]);
 
 endmodule
